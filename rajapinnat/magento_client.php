@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductRepositoryV1'
+  const DEFAULT_SERVICES = 'catalogProductRepositoryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -52,7 +52,7 @@ class MagentoClient {
   private $_tax_class_id = 5;
 
   // Verkkokaupan "root" kategorian tunnus, t�m�n alle lis�t��n kaikki tuoteryhm�t
-  private $_parent_id = $magento_parent_root_category;
+  private $_parent_id = 0;
 
   // Verkkokaupan "hinta"-kentt�, joko myymalahinta tai myyntihinta
   private $_hintakentta = "myymalahinta";
@@ -153,13 +153,15 @@ class MagentoClient {
   private $_TuetutKieliversiot = array();
 
   function __construct($base_url, $bearer, $client_options = array(), $debug = false) {
+      global $magento_parent_root_category;
+      $this->parent_id = $magento_parent_root_category;
       $this->base_url = $base_url;
       $this->bearer = $bearer;
   }
 
   // get client
   // $services: Magento 2 services, if empty uses default
-  public function get_client($services = self::DEFAULT_SERVICES, clientOptions = array() {
+  public function get_client($services = self::DEFAULT_SERVICES, $clientOptions = array()) {
        // add bearer
        $client_options['stream_context'] = 
          stream_context_create(array(
@@ -224,7 +226,7 @@ class MagentoClient {
           }
 
           // Kutsutaan soap rajapintaa
-          $client = $this->get_client($magento_api_category_repository)
+          $client = $this->get_client($magento_api_category_repository);
           $category_id = $client->catalogCategoryRepositoryV1Save(
             array($parent_id, $category_data)
           );
@@ -1982,7 +1984,7 @@ $tuote_data_up = array(
     try {
       $soap_result = $this->get_client()->catalogProductRepositoryV1GetList($searchCriteria);
       
-      $result = $soap_result->items->item;
+      $products = $soap_result->result->items->item;
      /*  this propably does not work in M2
      if ($exclude_giftcards) {
         foreach ($result as $index => $product) {
@@ -1993,19 +1995,19 @@ $tuote_data_up = array(
       }
       */
 
-      $this->log('magento_tuotteet', "Haettiin ".count($result)." tuotetta");
+      $this->log('magento_tuotteet', "Haettiin ".count($produts)." tuotetta");
 
       if ($only_skus == true) {
         $skus = array();
 
-        foreach ($result as $product) {
-          $skus[] = $product['sku'];
+        foreach ($products as $product) {
+          $skus[] = $product->sku;
         }
 
         return $skus;
       }
 
-      return $result;
+      return $products;
     }
     catch (Exception $e) {
       $this->_error_count++;
