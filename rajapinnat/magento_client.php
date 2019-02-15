@@ -1149,14 +1149,19 @@ $tuote_data_up = array(
     $count = 0;
     $total_count = count($poistettavat_tuotteet);
 
+
     // N�m� kaikki tuotteet pit�� poistaa Magentosta
     foreach ($poistettavat_tuotteet as $tuote) {
       $count++;
       $this->log('magento_tuotteet', "[{$count}/{$total_count}] Poistetaan tuote '$tuote'");
 
+      $tuote_array_fordelete = [
+        'sku' => $tuote
+    ];
+
       try {
         // T�ss� kutsu, jos tuote oikeasti halutaan poistaa
-        $this->_proxy->call($this->_session, 'catalog_product.delete', $tuote, 'SKU');
+        $this->get_client()->catalogProductRepositoryV1DeleteById($tuote_array_fordelete);
         $poistettu++;
       }
       catch (Exception $e) {
@@ -1995,7 +2000,7 @@ $tuote_data_up = array(
       }
       */
 
-      $this->log('magento_tuotteet', "Haettiin ".count($produts)." tuotetta");
+      $this->log('magento_tuotteet', "Haettiin ".count($products)." tuotetta");
 
       if ($only_skus == true) {
         $skus = array();

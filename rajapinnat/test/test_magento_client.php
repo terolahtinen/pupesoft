@@ -29,3 +29,11 @@ $returnVal = TestUtil::callMethod(
  );
 
  print_r($returnVal);
+
+ unset($returnVal[5725]);
+
+ $returnVal = TestUtil::callMethod(
+    $magento_client,
+    'poista_poistetut', 
+    array($returnVal)
+ );
