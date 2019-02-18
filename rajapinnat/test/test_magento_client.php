@@ -22,18 +22,24 @@ class TestUtil
 
 $magento_client = new MagentoClient ($magento_api_base_url, $magento_bearer);
 
-$returnVal = TestUtil::callMethod(
-    $magento_client,
-    'getProductList', 
-    array(true)
- );
+// $returnVal = TestUtil::callMethod(
+//     $magento_client,
+//     'getProductList', 
+//     array(true)
+//  );
 
- print_r($returnVal);
+//  print_r($returnVal);
 
- unset($returnVal[5725]);
+ //unset($returnVal[5725]);
+
+ $paivita_arvo[] = [
+     'tuoteno' => 'jokutoinentesti123456',
+     'myytavissa' => 123,
+     'vaihtoehtoiset_saldot' => []
+ ];
 
  $returnVal = TestUtil::callMethod(
     $magento_client,
-    'poista_poistetut', 
-    array($returnVal)
+    'paivita_saldot', 
+    array($paivita_arvo)
  );

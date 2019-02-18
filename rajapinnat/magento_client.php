@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductRepositoryV1';
+  const DEFAULT_SERVICES = 'catalogProductRepositoryV1,catalogInventoryStockRegistryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -1066,20 +1066,37 @@ $tuote_data_up = array(
 
       // P�ivitet��n saldo
       try {
-        $stock_data = array(
-          'qty'          => $qty,
-          'is_in_stock'  => $is_in_stock,
-          'manage_stock' => 1
-        );
+        
+        //catalogInventoryStockRegistryV1GetStockItemBySku method needs product sku in array
+        $product_sku_array = [
+          'productSku' => $product_sku
+        ];
 
-        $result = $this->_proxy->call(
-          $this->_session,
-          'product_stock.update',
-          array(
-            $product_sku,
-            $stock_data
-          )
-        );
+        $result_stock = $this->get_client()->catalogInventoryStockRegistryV1GetStockItemBySku($product_sku_array);
+        $result_stock->result->qty = $qty;
+        $updated_values = (array) $result_stock->result;
+        
+        $product_to_update = [
+          'productSku' => $product_sku,
+          'stockItem' => $updated_values
+        ];
+
+        $result = $this->get_client()->catalogInventoryStockRegistryV1UpdateStockItemBySku($product_to_update);
+
+        // $stock_data = array(
+        //   'qty'          => $qty,
+        //   'is_in_stock'  => $is_in_stock,
+        //   'manage_stock' => 1
+        // );
+
+        // $result = $this->_proxy->call(
+        //   $this->_session,
+        //   'product_stock.update',
+        //   array(
+        //     $product_sku,
+        //     $stock_data
+        //   )
+        // );
       }
       catch (Exception $e) {
         $this->_error_count++;
