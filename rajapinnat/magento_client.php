@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductRepositoryV1,catalogInventoryStockRegistryV1';
+  const DEFAULT_SERVICES = 'catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -2394,13 +2394,27 @@ $tuote_data_up = array(
 
   // Hakee $status -tilassa olevat tilaukset Magentosta ja merkkaa ne noudetuksi.
   // Palauttaa arrayn tilauksista
-  private function hae_tilaukset($status = 'processing') {
+  private function hae_tilaukset($status = 'testing_status') { //processing oli käytössä oleva status DEBUG
     $this->log('magento_tilaukset', "Haetaan tilauksia");
 
     $orders = array();
 
     // Toimii ordersilla
-    $filter = array(array('status' => array('eq' => $status)));
+    $filter = [
+      'searchCriteria' => [
+          'filterGroups' => [
+              [
+                  'filters' => [
+                      [
+                          'field' => 'status',
+                          'value' => $status,
+                          'condition_type' => 'eq'
+                      ]
+                  ]
+              ]
+          ]
+      ]
+    ];
 
     // Uusia voi hakea? state => 'new'
     //$filter = array(array('state' => array('eq' => 'new')));
@@ -2409,7 +2423,7 @@ $tuote_data_up = array(
     //return array($this->_proxy->call($this->_session, 'sales_order.info', '100019914'));
 
     // Haetaan tilaukset (orders.status = 'processing')
-    $fetched_orders = $this->_proxy->call($this->_session, 'sales_order.list', $filter);
+    $fetched_orders = $this->get_client()->salesOrderRepositoryV1GetList($filter);
 
     // HUOM: invoicella on state ja orderilla on status
     // Invoicen statet 'pending' => 1, 'paid' => 2, 'canceled' => 3
@@ -2417,16 +2431,20 @@ $tuote_data_up = array(
     // $filter = array(array('state' => array('eq' => 'paid')));
     // Haetaan laskut (invoices.state = 'paid')
 
-    foreach ($fetched_orders as $order) {
-      $this->log('magento_tilaukset', "Haetaan tilaus {$order['increment_id']}");
+    foreach ($fetched_orders->result->items->item as $order) {
+      $this->log('magento_tilaukset', "Haetaan tilaus {$order->incrementId}");
+
+      $order_id = [
+        'id' => $order->entityId
+      ];      
 
       // Haetaan tilauksen tiedot (orders)
-      $temp_order = $this->_proxy->call($this->_session, 'sales_order.info', $order['increment_id']);
+      $temp_order = $this->get_client()->salesOrderRepositoryV1Get($order_id);
 
       // Looptaan tilauksen statukset
-      foreach ($temp_order['status_history'] as $historia) {
+      foreach ($temp_order->result->statusHistories->item as $historia) {
         // Jos tilaus on ollut kerran jo processing_pupesoft, ei haeta sit� en��
-        $_status = $historia['status'];
+        $_status = $historia->status;
 
         if ($_status == "processing_pupesoft" and $this->_sisaanluvun_esto == "YES") {
           $this->log('magento_tilaukset', "Tilausta on k�sitelty {$_status} tilassa, ohitetaan sis��nluku");
@@ -2439,16 +2457,22 @@ $tuote_data_up = array(
 
       try {
         // P�ivitet��n tilauksen tila ett� se on noudettu pupesoftiin
-        $_data = array(
-          'orderIncrementId' => $order['increment_id'],
-          'status' => 'processing_pupesoft',
-          'Tilaus noudettu Pupesoftiin',
-        );
+        
+        $_data = [
+          'id' => $order->entityId,
+          'statusHistory' => [
+            'comment' => 'Tilaus noudettu toiminnanohjaukseen.',
+            'isCustomerNotified' => 0,
+            'isVisibleOnFront' => 0,
+            'parentId' => $order->entityId,
+            'status' => 'processing_pupesoft'
+          ]
+        ];
 
-        $this->_proxy->call($this->_session, 'sales_order.addComment', $_data);
+        $this->get_client()->salesOrderManagementV1AddComment($_data);
       }
       catch(Exception $e) {
-        $this->log('magento_tilaukset', "Kommentin lis�ys tilaukselle {$order['increment_id']} ep�onnistui", $e);
+        $this->log('magento_tilaukset', "Kommentin lis�ys tilaukselle {$order->incrementId} ep�onnistui", $e);
       }
     }
 

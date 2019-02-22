@@ -32,14 +32,21 @@ $magento_client = new MagentoClient ($magento_api_base_url, $magento_bearer);
 
  //unset($returnVal[5725]);
 
- $paivita_arvo[] = [
-     'tuoteno' => 'jokutoinentesti123456',
-     'myytavissa' => 123,
-     'vaihtoehtoiset_saldot' => []
- ];
+//  $paivita_arvo[] = [
+//      'tuoteno' => 'jokutoinentesti123456',
+//      'myytavissa' => 123,
+//      'vaihtoehtoiset_saldot' => []
+//  ];
 
- $returnVal = TestUtil::callMethod(
-    $magento_client,
-    'paivita_saldot', 
-    array($paivita_arvo)
- );
+//  $returnVal = TestUtil::callMethod(
+//     $magento_client,
+//     'paivita_saldot', 
+//     array($paivita_arvo)
+//  );
+
+
+$returnVal = TestUtil::callMethod(
+        $magento_client,
+        'hae_tilaukset',
+        []
+     );
