@@ -2394,7 +2394,7 @@ $tuote_data_up = array(
 
   // Hakee $status -tilassa olevat tilaukset Magentosta ja merkkaa ne noudetuksi.
   // Palauttaa arrayn tilauksista
-  private function hae_tilaukset($status = 'testing_status') { //processing oli käytössä oleva status DEBUG
+  private function hae_tilaukset($status = 'processing') {
     $this->log('magento_tilaukset', "Haetaan tilauksia");
 
     $orders = array();
