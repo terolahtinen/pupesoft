@@ -260,18 +260,19 @@ class MagentoClient {
     $count = 0;
     $total_count = count($dnstuote);
 
-    try {
-      // Tarvitaan kategoriat
-      $category_tree = $this->getCategories();
+    //Categories not used in this implementation so not updated for magento 2
+    // try {
+    //   // Tarvitaan kategoriat
+    //   $category_tree = $this->getCategories();
 
-      // Haetaan storessa olevat tuotenumerot
-      $skus_in_store = $this->getProductList(true);
-    }
-    catch (Exception $e) {
-      $this->_error_count++;
-      $this->log('magento_tuotteet', "Virhe! Tuotteiden lis�yksess� (simple)", $e);
-      return;
-    }
+    //   // Haetaan storessa olevat tuotenumerot
+    //   $skus_in_store = $this->getProductList(true);
+    // }
+    // catch (Exception $e) {
+    //   $this->_error_count++;
+    //   $this->log('magento_tuotteet', "Virhe! Tuotteiden lis�yksess� (simple)", $e);
+    //   return;
+    // }
 
     // Lis�t��n tuotteet eriss�
     foreach ($dnstuote as $tuote) {
@@ -2147,23 +2148,22 @@ $tuote_data_up = array(
   }
 
   // Hakee oletus attribuuttisetin Magentosta
-  private function getAttributeSet() {
-    if (empty($this->_attributeSet)) {
-      $attributeSets = $this->_proxy->call($this->_session, 'product_attribute_set.list');
-      $this->_attributeSet = current($attributeSets);
-    }
+  //oletus attribuuttien hakeminen otettu pois käytöstä, ID hardcoded
+  // private function getAttributeSet() {
+  //   if (empty($this->_attributeSet)) {
+  //     $attributeSets = $this->_proxy->call($this->_session, 'product_attribute_set.list');
+  //     $this->_attributeSet = current($attributeSets);
+  //   }
 
-    return $this->_attributeSet;
-  }
+  //   return $this->_attributeSet;
+  // }
 
   // Hakee tuotteelle attribute set id:n
   private function get_attribute_set_id(Array $tuote) {
     $pupesoft_attr_id = $this->get_tuotteen_avainsana($tuote, 'magento_attribute_set_id');
 
     if (is_null($pupesoft_attr_id)) {
-      $magento_attr_set = $this->getAttributeSet();
-
-      $set_id = $magento_attr_set['set_id'];
+      $set_id = 31; //ID for default product attribute set
     }
     else {
       $set_id = $pupesoft_attr_id['selite'];
