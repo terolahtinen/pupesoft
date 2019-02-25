@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1';
+  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -2200,15 +2200,22 @@ $tuote_data_up = array(
 
     try {
       // Haetaan kaikki attribute setit magentosta
-      $attribute_sets = $this->_proxy->call($this->_session, 'product_attribute_set.list');
+      $attribute_filter = [
+        'searchCriteria' => ''
+      ];
+
+      $attribute_sets = $this->get_client()->catalogAttributeSetRepositoryV1GetList($attribute_filter);
 
       // Haetaan kaikkien settien atribuutit
-      foreach ($attribute_sets as $set) {
-        $id   = $set['set_id'];
-        $name = $set['name'];
-        $list = $this->_proxy->call($this->_session, 'product_attribute.list', array($id));
+      foreach ($attribute_sets->result->items->item as $set) {
+        $id   = $set->attributeSetId;
+        $name = $set->attributeSetName;
+        $id_for_search = [
+          'attributeSetId' => $id
+        ];
+        $list = $this->get_client()->catalogProductAttributeManagementV1GetAttributes($id_for_search);
 
-        $this->log('magento_tuotteet', "Haettiin atribuuttiryhma {$id} {$name} (".count($list)." atribuuttia)");
+        $this->log('magento_tuotteet', "Haettiin atribuuttiryhma {$id} {$name} (".count($list->result->item)." atribuuttia)");
 
         $attr_list[$id] = $list;
       }
@@ -2279,14 +2286,15 @@ $tuote_data_up = array(
 
     $this->log('magento_tuotteet', "Etsit��n asiakasryhm� nimell� '{$name}'");
 
-    $customer_groups = $this->_proxy->call(
-      $this->_session,
-      'customer_group.list'
-    );
+    $customer_group_filters = [
+      'searchCriteria' => ''
+    ];
 
-    foreach ($customer_groups as $asryhma) {
-      if (strcasecmp($asryhma['customer_group_code'], $name) == 0) {
-        $id = $asryhma['customer_group_id'];
+    $customer_groups = $this->get_client()->customerGroupRepositoryV1GetList($customer_group_filters);
+
+    foreach ($customer_groups->result->items->item as $asryhma) {
+      if (strcasecmp($asryhma->code, $name) == 0) {
+        $id = $asryhma->id;
 
         $this->log('magento_tuotteet', "L�ydettiin asiakasryhm� '{$id}'");
 
