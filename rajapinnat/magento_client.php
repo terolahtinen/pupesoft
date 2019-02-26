@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1';
+  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -2315,10 +2315,12 @@ $tuote_data_up = array(
     $attribute_id = '';
 
     // Etsit��n halutun attribuutin id
-    foreach ($attribute_list as $attribute) {
-      if (strcasecmp($attribute['code'], $name) == 0) {
-        $attribute_id = $attribute['attribute_id'];
-        $attribute_type = $attribute['type'];
+    foreach ($attribute_list->result->item as $attribute) {
+      if (strcasecmp($attribute->attributeCode, $name) == 0) {
+        $attribute_id = $attribute->attributeId;
+        $attribute_type = $attribute->frontendInput;
+        $attribute_code = $attribute->attributeCode;
+
         $this->log('magento_tuotteet', "Atribuutti '{$name}' ({$value}) l�ytyi setist� {$attribute_set_id}, attribute_id: {$attribute_id}, attribute_type: {$attribute_type}");
         break;
       }
@@ -2338,58 +2340,45 @@ $tuote_data_up = array(
     }
 
     // Haetaan kaikki attribuutin optionssit
-    $options = $this->_proxy->call(
-      $this->_session,
-      "product_attribute.options",
-      array(
-        $attribute_id
-      )
-    );
+
+    //attributeCode to array for options call
+    $attribute_code_array = [
+      'attributeCode' => $attribute_code
+    ];
+
+    $options = $this->get_client()->catalogProductAttributeOptionManagementV1GetItems($attribute_code_array);
 
     // Etit��n optionsin value
-    foreach ($options as $option) {
-      if (strcasecmp($option['label'], $value) == 0) {
-        $this->log('magento_tuotteet', "Palautetaan option-value: {$option['value']}");
-        return $option['value'];
+    foreach ($options->result->item as $option) {
+      if (strcasecmp($option->label, $value) == 0) {
+        $this->log('magento_tuotteet', "Palautetaan option-value: {$option->value}");
+        return $option->value;
       }
     }
 
     // Jos optionssia ei ole mutta tyyppi on select niin luodaan se
     if ($attribute_type == "select" or $attribute_type == "multiselect") {
-      $optionToAdd = array(
-        "label" => array(
-          array(
-            "store_id" => 0,
-            "value" => $value
-          )
-        ),
-        "is_default" => 0
-      );
+      $optionToAdd = [
+        'attributeCode' => $attribute_code,
+        'option' => [
+          'label' => $value,
+          'value' => '',
+          'isDefault' => 0
+        ]
+      ];
 
-      $this->_proxy->call($this->_session,
-        "product_attribute.addOption",
-        array(
-          $attribute_id,
-          $optionToAdd
-        )
-      );
+      $this->get_client()->catalogProductAttributeOptionManagementV1Add($optionToAdd);
 
       $this->log('magento_tuotteet', "Luotiin uusi attribuutti $value optioid $attribute_id");
 
       // Haetaan kaikki attribuutin optionssit uudestaan..
-      $options = $this->_proxy->call(
-        $this->_session,
-        "product_attribute.options",
-        array(
-          $attribute_id
-        )
-      );
+      $options = $this->get_client()->catalogProductAttributeOptionManagementV1GetItems($attribute_code_array);
 
       // Etit��n optionsin value uudestaan..
-      foreach ($options as $option) {
-        if (strcasecmp($option['label'], $value) == 0) {
-          $this->log('magento_tuotteet', "Palautetaan option-value(2285): {$option[value]}");
-          return $option['value'];
+      foreach ($options->result->item as $option) {
+        if (strcasecmp($option->label, $value) == 0) {
+          $this->log('magento_tuotteet', "Palautetaan option-value(2285): {$option->value}");
+          return $option->value;
         }
       }
     }
