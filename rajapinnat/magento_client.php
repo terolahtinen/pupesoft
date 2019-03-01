@@ -664,7 +664,7 @@ $tuote_data_up = array(
       }
 
       // Lis�t��n kuvat Magentoon
-      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto, $tuote['tuoteno']);
+      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto, $tuote_clean);
 
       // Lis�t��n tuotteen asiakaskohtaiset tuotehinnat
       if ($this->_asiakaskohtaiset_tuotehinnat) {
