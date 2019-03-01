@@ -15,7 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
-  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1';
+  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -2576,16 +2576,27 @@ $tuote_data_up = array(
     $pictures = array();
     $return = array();
 
+    $sku_GetList = [
+      'sku' => $tuote_sku
+    ];
+
     // Haetaan tuotteen kuvat
     try {
-      $pictures = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1GetList($tuote_sku);
+      $pictures = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1GetList($sku_GetList);
     }
     catch (Exception $e) {
       $this->log('magento_tuotteet', "Virhe! Kuvalistauksen ep�onnistui", $e);
       $this->_error_count++;
     }
 
-    foreach ($pictures->result->item as $picture) {
+    $pictures_item = $pictures->result->item;
+
+    if(is_array($pictures_item) == false) {
+      $return[] = $pictures_item->file;
+      return $return;
+    }
+
+    foreach ($pictures_item as $picture) {
       $return[] = $picture->file;
     }
 
