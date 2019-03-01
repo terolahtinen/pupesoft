@@ -664,7 +664,7 @@ $tuote_data_up = array(
       }
 
       // Lis�t��n kuvat Magentoon
-      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto);
+      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto, $tuote['tuoteno']);
 
       // Lis�t��n tuotteen asiakaskohtaiset tuotehinnat
       if ($this->_asiakaskohtaiset_tuotehinnat) {
@@ -2504,7 +2504,7 @@ $tuote_data_up = array(
   }
 
   // Poistaa tuotteen kaikki kuvat ja lis�� ne takaisin
-  private function lisaa_ja_poista_tuotekuvat($product_id, $pupesoft_tuote_id, $toiminto) {
+  private function lisaa_ja_poista_tuotekuvat($product_id, $pupesoft_tuote_id, $toiminto, $tuote_sku) {
     if (empty($product_id) or empty($pupesoft_tuote_id) or empty($toiminto)) {
       return;
     }
@@ -2525,7 +2525,7 @@ $tuote_data_up = array(
     $types = array('image', 'small_image', 'thumbnail');
 
     // Pit�� ensin poistaa kaikki tuotteen kuvat Magentosta
-    $magento_pictures = $this->listaa_tuotekuvat($product_id);
+    $magento_pictures = $this->listaa_tuotekuvat($tuote_sku);
 
     // Poistetaan kuvat
     foreach ($magento_pictures as $file) {
@@ -2572,24 +2572,21 @@ $tuote_data_up = array(
   }
 
   // Hakee tuotteen tuotekuvat Magentosta
-  private function listaa_tuotekuvat($product_id) {
+  private function listaa_tuotekuvat($tuote_sku) {
     $pictures = array();
     $return = array();
 
     // Haetaan tuotteen kuvat
     try {
-      $pictures = $this->_proxy->call(
-        $this->_session,
-        'catalog_product_attribute_media.list',
-        $product_id);
+      $pictures = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1GetList($tuote_sku);
     }
     catch (Exception $e) {
       $this->log('magento_tuotteet', "Virhe! Kuvalistauksen ep�onnistui", $e);
       $this->_error_count++;
     }
 
-    foreach ($pictures as $picture) {
-      $return[] = $picture['file'];
+    foreach ($pictures->result->item as $picture) {
+      $return[] = $picture->file;
     }
 
     return $return;
