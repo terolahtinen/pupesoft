@@ -2528,8 +2528,8 @@ $tuote_data_up = array(
     $magento_pictures = $this->listaa_tuotekuvat($tuote_sku);
 
     // Poistetaan kuvat
-    foreach ($magento_pictures as $file) {
-      $this->poista_tuotekuva($product_id, $file);
+    foreach ($magento_pictures as $file_id) {
+      $this->poista_tuotekuva($tuote_sku, $file_id);
     }
 
     // Haetaan tuotekuvat Pupesoftista
@@ -2588,35 +2588,42 @@ $tuote_data_up = array(
       $this->log('magento_tuotteet', "Virhe! Kuvalistauksen ep�onnistui", $e);
       $this->_error_count++;
     }
-
+    //haetaan kuvan id, magento 2 soap käyttään kuvan id:tä kuvien poistoa varten
     $pictures_item = $pictures->result->item;
 
     if(is_array($pictures_item) == false) {
-      $return[] = $pictures_item->file;
+      $return[] = [
+        $pictures_item->id => $pictures_item->id
+      ];
       return $return;
     }
 
     foreach ($pictures_item as $picture) {
-      $return[] = $picture->file;
+      $return[] = $picture->id;
     }
 
     return $return;
   }
 
   // Poistaa tuotteen tuotekuvan Magentosta
-  private function poista_tuotekuva($product_id, $filename) {
+  private function poista_tuotekuva($tuote_sku, $entryId) {
     $return = false;
+    
+    $product_info_sku = [
+      'sku' => $tuote_sku
+    ];
+
+    $product_info = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1GetList($product_info_sku);
+    $filename = $product_info->result->item->file;
+
+    $remove_details = [
+      'sku' => $tuote_sku,
+      'entryId' => $entryId
+    ];
 
     // Poistetaan tuotteen kuva
     try {
-      $return = $this->_proxy->call(
-        $this->_session,
-        'catalog_product_attribute_media.remove',
-        array(
-          'product' => $product_id,
-          'file'    => $filename
-        )
-      );
+      $return = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1Remove($remove_details);
 
       $this->log('magento_tuotteet', "Poistetaan '{$filename}'");
     }
