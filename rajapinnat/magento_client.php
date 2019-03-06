@@ -2592,9 +2592,7 @@ $tuote_data_up = array(
     $pictures_item = $pictures->result->item;
 
     if(is_array($pictures_item) == false) {
-      $return[] = [
-        $pictures_item->id => $pictures_item->id
-      ];
+      $return[] = $pictures_item->id;
       return $return;
     }
 
@@ -2608,7 +2606,7 @@ $tuote_data_up = array(
   // Poistaa tuotteen tuotekuvan Magentosta
   private function poista_tuotekuva($tuote_sku, $entryId) {
     $return = false;
-    
+
     $product_info_sku = [
       'sku' => $tuote_sku
     ];
