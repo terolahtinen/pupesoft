@@ -15,6 +15,7 @@ require_once "rajapinnat/edi.php";
 class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
+  // service order matters here, adding a new service might break functionality
   const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1';
 
   // Kutsujen m��r� multicall kutsulla
@@ -152,7 +153,7 @@ class MagentoClient {
   // Default kielen lis�ksi muut tuetut kauppakohtaiset kieliversiot, esim array("en" => array('4','13'), "se" => array('9'));
   private $_TuetutKieliversiot = array();
 
-  function __construct($base_url, $bearer, $client_options = array(), $debug = false) {
+  function __construct($base_url, $bearer/*, $client_options = array(), $debug = false*/) {
       global $magento_parent_root_category;
       $this->parent_id = $magento_parent_root_category;
       $this->base_url = $base_url;
@@ -2540,22 +2541,23 @@ $tuote_data_up = array(
 
       // Lis�t��n tuotekuva kerrallaan
       try {
-        $data = array(
-          $product_id,
-          array(
-            'file'     => $kuva,
-            'label'    => '',
+        $data = [
+          'sku' => $tuote_sku,
+          'entry' => [
+            'mediaType' => 'image',
+            'label' => '',
             'position' => 0,
-            'types'    => $types,
-            'exclude'  => 0
-          ),
-        );
+            'disabled' => false,
+            'types' => $types,
+          ],
+          'content' => [
+            'base64EncodedData' => $kuva['content'],
+            'type' => $kuva['mime'],
+            'name' => $kuva['name']
+          ]
+        ];
 
-        $return = $this->_proxy->call(
-          $this->_session,
-          'catalog_product_attribute_media.create',
-          $data
-        );
+        $return = $this->get_client()->catalogProductAttributeMediaGalleryManagementV1Create($data);
 
         $this->log('magento_tuotteet', "Lis�tty kuva '{$kuva['name']}'");
         $this->debug('magento_tuotteet', $return);
