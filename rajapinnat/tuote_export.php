@@ -60,7 +60,7 @@ $ajetaanko_kaikki = empty($argv[4]) ? false : true;
 // Tässä kaikki magentorajapinnan configurointimuuttujat
 
 // Varmistetaan, että pakolliset muuttujat on asetettu
-if (empty($magento_api_te_url) or empty($magento_api_te_usr) or empty($magento_api_te_pas)) {
+if (empty($magento_api_base_url) or empty($magento_bearer)) {
   die("Magento parametrit puuttuu, päivitystä ei voida ajaa.");
 }
 
@@ -329,9 +329,8 @@ pupesoft_flock($lock_params);
 tuote_export_echo("Aloitetaan Magento-siirto.");
 
 $magento_client = new MagentoClient(
-  $magento_api_te_url,
-  $magento_api_te_usr,
-  $magento_api_te_pas,
+  $magento_api_base_url,
+  $magento_bearer,
   $magento_client_options,
   $magento_debug
 );
@@ -477,9 +476,8 @@ if (in_array('tilaukset', $magento_ajolista)) {
   tuote_export_echo("Haetaan tilaukset");
 
   $magento_tilaus_client = new MagentoClient(
-    $magento_api_ht_url,
-    $magento_api_ht_usr,
-    $magento_api_ht_pas,
+    $magento_api_base_url,
+    $magento_bearer,
     $magento_client_options,
     $magento_debug
   );
