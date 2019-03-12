@@ -11,7 +11,7 @@ class Edi {
    */
 
 
-  static function create($order, $options) {
+  static function create($order_object, $options) {
     $magento_api_ht_edi            = $options['edi_polku'];
     $ovt_tunnus                    = $options['ovt_tunnus'];
     $pupesoft_tilaustyyppi         = $options['tilaustyyppi'];
@@ -20,6 +20,8 @@ class Edi {
     $rahtikulu_tuoteno             = $options['rahtikulu_tuoteno'];
     $rahtikulu_nimitys             = $options['rahtikulu_nimitys'];
     $verkkokauppa_erikoiskasittely = $options['erikoiskasittely'];
+
+    $order = $order_object->result;
 
     if (empty($magento_api_ht_edi) or empty($ovt_tunnus) or empty($pupesoft_tilaustyyppi)) {
       die("Parametrejä puuttuu\n");
@@ -34,7 +36,8 @@ class Edi {
     }
 
     // Tilauksella käytetyt lahjakortit ei saa vehentää myynti pupen puolella
-    $giftcards = empty($order['webtex_giftcard']) ? null : json_decode($order['webtex_giftcard']);
+    //ei toimi viel?, placeholder arvot
+    $giftcards = isset($order->items->giftcardItemOption) ? json_decode($order['webtex_giftcard']): null;
 
     if (!empty($giftcards)) {
       $giftcard_sum = 0;
@@ -58,7 +61,7 @@ class Edi {
 
     //Tarkistetaan onko tämän nimiselle verkkokaupalle asetettu erikoiskäsittelyjä
     if (isset($verkkokauppa_erikoiskasittely) and count($verkkokauppa_erikoiskasittely) > 0) {
-      $edi_store = str_replace("\n", " ", $order['store_name']);
+      $edi_store = str_replace("\n", " ", $order->storeName);
 
       foreach ($verkkokauppa_erikoiskasittely as $verkkokauppaparametrit) {
         // Avaimet
@@ -84,7 +87,7 @@ class Edi {
     $valittu_ovt_tunnus = (!empty($vaihtoehtoinen_ovt)) ? $vaihtoehtoinen_ovt : $ovt_tunnus;
     $verkkokauppa_asiakasnro = (!empty($vaihtoehtoinen_asiakasnro)) ? $vaihtoehtoinen_asiakasnro : $verkkokauppa_asiakasnro;
 
-    $maksuehto = strip_tags($order['payment']['method']);
+    $maksuehto = strip_tags($order->payment->method);
 
     // Jos on asetettu maksuehtojen ohjaus, tarkistetaan korvataanko Magentosta tullut maksuehto
     if (isset($magento_maksuehto_ohjaus) and count($magento_maksuehto_ohjaus) > 0) {
@@ -95,32 +98,32 @@ class Edi {
       }
     }
 
-    $store_name = str_replace("\n", " ", $order['store_name']);
-    $billingadress = str_replace("\n", ", ", $order['billing_address']['street']);
-    $shippingadress = str_replace("\n", ", ", $order['shipping_address']['street']);
+    $store_name = str_replace("\n", " ", $order->storeName);
+    $billingadress = str_replace("\n", ", ", $order->billingAddress->street);
+    $shippingadress = str_replace("\n", ", ", $order->extensionAttributes->shippingAssignments->item->shipping->address->street);
 
     // Yritystilauksissa vaihdetaan yrityksen ja tilaajan nimi toisin päin
-    if (!empty($order['billing_address']['company'])) {
-      $billing_company = $order['billing_address']['lastname']." ".$order['billing_address']['firstname'];
-      $billing_contact = $order['billing_address']['company'];
+    if (isset($order->billingAddress->company)) {
+      $billing_company = $order->billingAddress->lastname." ".$order->billingAddress->firstname;
+      $billing_contact = $order->billingAddress->company;
 
-      $shipping_company = $order['shipping_address']['lastname']." ".$order['shipping_address']['firstname'];
-      $shipping_contact = $order['shipping_address']['company'];
+      $shipping_company = $order->extensionAttributes->shippingAssignments->item->shipping->address->lastname." ".$order->extensionAttributes->shippingAssignments->item->shipping->address->firstname;
+      $shipping_contact = $order->extensionAttributes->shippingAssignments->item->shipping->address->company;
     }
     else {
-      $billing_company = $order['billing_address']['company'];
-      $billing_contact = $order['billing_address']['lastname']." ".$order['billing_address']['firstname'];
+      $billing_company = $order->billingAddress->company;
+      $billing_contact = $order->billingAddress->lastname." ".$order->billingAddress->firstname;
 
-      $shipping_company = $order['shipping_address']['company'];
-      $shipping_contact = $order['shipping_address']['lastname']." ".$order['shipping_address']['firstname'];
+      $shipping_company = $order->extensionAttributes->shippingAssignments->item->shipping->address->company;
+      $shipping_contact = $order->extensionAttributes->shippingAssignments->item->shipping->address->lastname." ".$order->extensionAttributes->shippingAssignments->item->shipping->address->firstname;
     }
 
     $noutopistetunnus = '';
     $tunnisteosa = 'matkahuoltoNearbyParcel_';
 
     // Jos shipping_method sisältää tunnisteosan ja sen perässä on numero niin otetaan talteen
-    if (!empty($order['shipping_method']) and strpos($order['shipping_method'], $tunnisteosa) !== false) {
-      $tunnistekoodi = str_replace($tunnisteosa, '', $order['shipping_method']);
+    if (!isset($order->extensionAttributes->shippingAssignments->item->shipping->method) and strpos($order->extensionAttributes->shippingAssignments->item->shipping->method, $tunnisteosa) !== false) {
+      $tunnistekoodi = str_replace($tunnisteosa, '', $order->extensionAttributes->shippingAssignments->item->shipping->method);
       $noutopistetunnus = is_numeric($tunnistekoodi) ? $tunnistekoodi : '';
     }
 
@@ -136,50 +139,53 @@ class Edi {
     $kohde = '';
     $toimaika = '';
 
-    if (!empty($order['reference_number'])) {
-      $tilausviite = str_replace("\n", " ", $order['reference_number']);
+    //DEBUG ei tarkastettu nimi: reference_number
+    if (isset($order->reference_number)) {
+      $tilausviite = str_replace("\n", " ", $order->reference_number);
     }
 
-    if (!empty($order['order_number'])) {
-      $tilausnumero = str_replace("\n", " ", $order['order_number']);
+    if (isset($order->incrementId)) {
+      $tilausnumero = str_replace("\n", " ", $order->incrementId);
     }
 
-    if (!empty($order['target'])) {
-      $kohde = str_replace("\n", " ", $order['target']);
+    //DEBUG ei tarkastettu nimi: target
+    if (isset($order->target)) {
+      $kohde = str_replace("\n", " ", $order->target);
     }
 
-    if (!empty($order['delivery_time'])) {
-      $toimaika = str_replace("\n", " ", $order['delivery_time']);
+    //DEBUG ei tarkastettu nimi: delivery_time
+    if (isset($order->delivery_time)) {
+      $toimaika = str_replace("\n", " ", $order->delivery_time);
     }
     else {
       $toimaika = date("Y-m-d");
     }
 
     // tilauksen otsikko
-    $edi_order  = "*IS from:721111720-1 to:IKH,ORDERS*id:{$order['increment_id']} version:AFP-1.0 *MS\n";
-    $edi_order .= "*MS {$order['increment_id']}\n";
+    $edi_order  = "*IS from:721111720-1 to:IKH,ORDERS*id:{$order->incrementId} version:AFP-1.0 *MS\n";
+    $edi_order .= "*MS {$order->incrementId}\n";
     $edi_order .= "*RS OSTOTIL\n";
-    $edi_order .= "OSTOTIL.OT_NRO:{$order['increment_id']}\n";
+    $edi_order .= "OSTOTIL.OT_NRO:{$order->incrementId}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITTAJANRO:{$valittu_ovt_tunnus}\n";
     $edi_order .= "OSTOTIL.OT_TILAUSTYYPPI:{$pupesoft_tilaustyyppi}\n";
     $edi_order .= "OSTOTIL.VERKKOKAUPPA:{$store_name}\n";
-    $edi_order .= "OSTOTIL.OT_VERKKOKAUPPA_ASIAKASNRO:{$order['customer_id']}\n"; //tämä tulee suoraan Magentosta
+    $edi_order .= "OSTOTIL.OT_VERKKOKAUPPA_ASIAKASNRO:{$order->customerId}\n"; //tämä tulee suoraan Magentosta
     $edi_order .= "OSTOTIL.OT_VERKKOKAUPPA_TILAUSVIITE:{$tilausviite}\n";
     $edi_order .= "OSTOTIL.OT_VERKKOKAUPPA_TILAUSNUMERO:{$tilausnumero}\n";
     $edi_order .= "OSTOTIL.OT_VERKKOKAUPPA_KOHDE:{$kohde}\n";
     $edi_order .= "OSTOTIL.OT_TILAUSAIKA:{$toimaika}\n";
     $edi_order .= "OSTOTIL.OT_KASITTELIJA:\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUSAIKA:{$toimaika}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUSTAPA:{$order['shipping_description']}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUSTAPA:{$order->shippingDescription}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUSEHTO:\n";
-    $edi_order .= "OSTOTIL.OT_MAKSETTU:{$order['status']}\n";
+    $edi_order .= "OSTOTIL.OT_MAKSETTU:{$order->status}\n";
     $edi_order .= "OSTOTIL.OT_MAKSUEHTO:{$maksuehto}\n";
     $edi_order .= "OSTOTIL.OT_VIITTEEMME:\n";
     $edi_order .= "OSTOTIL.OT_VIITTEENNE:\n";
-    $edi_order .= "OSTOTIL.OT_TILAUSVIESTI:{$order['customer_note']}\n";
-    $edi_order .= "OSTOTIL.OT_VEROMAARA:{$order['tax_amount']}\n";
+    $edi_order .= "OSTOTIL.OT_TILAUSVIESTI:{$order->customerNote}\n";
+    $edi_order .= "OSTOTIL.OT_VEROMAARA:{$order->taxAmount}\n";
     $edi_order .= "OSTOTIL.OT_SUMMA:{$grand_total}\n";
-    $edi_order .= "OSTOTIL.OT_VALUUTTAKOODI:{$order['order_currency_code']}\n";
+    $edi_order .= "OSTOTIL.OT_VALUUTTAKOODI:{$order->orderCurrencyCode}\n";
     $edi_order .= "OSTOTIL.OT_KLAUSUULI1:\n";
     $edi_order .= "OSTOTIL.OT_KLAUSUULI2:\n";
     $edi_order .= "OSTOTIL.OT_KULJETUSOHJE:\n";
@@ -190,10 +196,10 @@ class Edi {
     $edi_order .= "OSTOTIL.OT_YRITYS:{$billing_company}\n";
     $edi_order .= "OSTOTIL.OT_YHTEYSHENKILO:{$billing_contact}\n";
     $edi_order .= "OSTOTIL.OT_KATUOSOITE:".$billingadress."\n";
-    $edi_order .= "OSTOTIL.OT_POSTITOIMIPAIKKA:{$order['billing_address']['city']}\n";
-    $edi_order .= "OSTOTIL.OT_POSTINRO:{$order['billing_address']['postcode']}\n";
-    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONPUH:{$order['billing_address']['telephone']}\n";
-    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONFAX:{$order['billing_address']['fax']}\n";
+    $edi_order .= "OSTOTIL.OT_POSTITOIMIPAIKKA:{$order->billingAddress->city}\n";
+    $edi_order .= "OSTOTIL.OT_POSTINRO:{$order->billingAddress->postcode}\n";
+    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONPUH:{$order->billingAddress->telephone}\n";
+    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONFAX:{$order->billingAddress->fax}\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_YRITYS:\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_KATUOSOITE:\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_POSTITOIMIPAIKKA:\n";
@@ -205,32 +211,32 @@ class Edi {
     $edi_order .= "OSTOTIL.OT_TOIMITUS_YRITYS:{$shipping_company}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_NIMI:{$shipping_contact}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_KATUOSOITE:".$shippingadress."\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTITOIMIPAIKKA:{$order['shipping_address']['city']}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTINRO:{$order['shipping_address']['postcode']}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_MAAKOODI:{$order['shipping_address']['country_id']}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_PUH:{$order['shipping_address']['telephone']}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_EMAIL:{$order['customer_email']}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTITOIMIPAIKKA:{$order->extensionAttributes->shippingAssignments->item->shipping->address->city}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTINRO:{$order->extensionAttributes->shippingAssignments->item->shipping->address->postcode}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_MAAKOODI:{$order->extensionAttributes->shippingAssignments->item->shipping->address->countryId}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_PUH:{$orderextensionAttributes->shippingAssignments->item->shipping->address->telephone}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_EMAIL:{$order->customerEmail}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_NOUTOPISTE_TUNNUS:{$noutopistetunnus}\n";
     $edi_order .= "*RE OSTOTIL\n";
 
     $i = 1;
 
-    foreach ($order['items'] as $item) {
-      $product_id = $item['product_id'];
+    foreach ($order->items->item as $item) {
+      $product_id = $item->productId;
 
-      if ($item['product_type'] != "configurable") {
+      if ($item->productType != "configurable") {
         // Tuoteno
-        $tuoteno = $item['sku'];
+        $tuoteno = $item->sku;
         if (substr($tuoteno, 0, 4) == "SKU_") $tuoteno = substr($tuoteno, 4);
 
         // Nimitys
-        $nimitys = $item['name'];
+        $nimitys = $item->name;
 
         // Määrä
-        $kpl = $item['qty_ordered'] * 1;
+        $kpl = $item->qtyOrdered * 1;
 
         // Hinta pitää hakea isältä
-        $result = search_array_key_for_value_recursive($order['items'], "item_id", $item['parent_item_id']);
+        $result = search_array_key_for_value_recursive($order->items, "item_id", $item->parentItemId);
 
         // Löyty yks tai enemmän, otetaan eka?
         if (count($result) != 0) {
@@ -241,16 +247,16 @@ class Edi {
         }
 
         // Verollinen yksikköhinta
-        $verollinen_hinta = $_item['original_price'];
+        $verollinen_hinta = $_item->originalPrice;
 
         // Veroton yksikköhinta
-        $veroton_hinta = $_item['price'];
+        $veroton_hinta = $_item->price;
 
         // Rivin alennusprosentti
-        $alennusprosentti = $_item['discount_percent'];
+        $alennusprosentti = $_item->discountPercent;
 
         // Rivin alennusmäärä
-        $alennusmaara = $_item['base_discount_amount'];
+        $alennusmaara = $_item->baseDiscountAmount;
 
         // Jos alennusprosentti on 0, tarkistetaan vielä onko annettu euromääräistä alennusta
         // Lahjakorttia ja euromääräistä alennusta ei voi käyttää samalla tilauksella, Magentossa estetty
@@ -260,7 +266,7 @@ class Edi {
         }
 
         // Verokanta
-        $alvprosentti = $_item['tax_percent'];
+        $alvprosentti = $_item->taxPercent;
 
         // Verollinen rivihinta
         $rivihinta_verollinen = round(($verollinen_hinta * $kpl) * (1 - $alennusprosentti / 100), 6);
@@ -270,7 +276,7 @@ class Edi {
 
         // Rivin tiedot
         $edi_order .= "*RS OSTOTILRIV {$i}\n";
-        $edi_order .= "OSTOTILRIV.OTR_NRO:{$order['increment_id']}\n";
+        $edi_order .= "OSTOTILRIV.OTR_NRO:{$order->incrementId}\n";
         $edi_order .= "OSTOTILRIV.OTR_RIVINRO:{$i}\n";
         $edi_order .= "OSTOTILRIV.OTR_TOIMITTAJANRO:\n";
         $edi_order .= "OSTOTILRIV.OTR_TUOTEKOODI:{$tuoteno}\n";
@@ -292,21 +298,21 @@ class Edi {
     }
 
     // Rahtikulu, veroton
-    $rahti_veroton = $order['shipping_amount'];
+    $rahti_veroton = $order->extensionAttributes->shippingAssignments->item->shipping->total->shippingAmount;
 
     if ($rahti_veroton != 0) {
       // Rahtikulu, verollinen
-      $rahti = $order['shipping_amount'] + $order['shipping_tax_amount'];
+      $rahti = $order->extensionAttributes->shippingAssignments->item->shipping->total->shippingAmount + $order->extensionAttributes->shippingAssignments->item->shipping->total->shippingTaxAmount;
 
       // Rahtin alviprossa
       $rahti_alvpros = round((($rahti / $rahti_veroton) - 1) * 100);
 
-      if (!empty($order['shipping_description_line'])) {
-        $rahtikulu_nimitys .= " / {$order['shipping_description_line']}";
+      if (isset($order->shippingDescription)) {
+        $rahtikulu_nimitys .= " / {$order->shippingDescription}";
       }
 
       $edi_order .= "*RS OSTOTILRIV {$i}\n";
-      $edi_order .= "OSTOTILRIV.OTR_NRO:{$order['increment_id']}\n";
+      $edi_order .= "OSTOTILRIV.OTR_NRO:{$order->incrementId}\n";
       $edi_order .= "OSTOTILRIV.OTR_RIVINRO:{$i}\n";
       $edi_order .= "OSTOTILRIV.OTR_TOIMITTAJANRO:\n";
       $edi_order .= "OSTOTILRIV.OTR_TUOTEKOODI:{$rahtikulu_tuoteno}\n";
@@ -330,7 +336,7 @@ class Edi {
       $edi_order = iconv("UTF-8", "ISO-8859-1//TRANSLIT", $edi_order);
     }
 
-    $name_prefix = "magento-order-{$order['increment_id']}-".date("Ymd")."-";
+    $name_prefix = "magento-order-{$order->incrementId}-".date("Ymd")."-";
     $file_dir    = $magento_api_ht_edi;
     $filename    = tempnam($file_dir, $name_prefix);
     unlink($filename);
