@@ -53,7 +53,7 @@ class Edi {
       $grand_total = $order['grand_total'] + $giftcard_sum;
     }
     else {
-      $grand_total = $order['grand_total'];
+      $grand_total = $order->grandTotal;
     }
 
     $vaihtoehtoinen_ovt = '';
