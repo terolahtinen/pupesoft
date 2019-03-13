@@ -99,8 +99,8 @@ class Edi {
     }
 
     $store_name = str_replace("\n", " ", $order->storeName);
-    $billingadress = str_replace("\n", ", ", $order->billingAddress->street);
-    $shippingadress = str_replace("\n", ", ", $order->extensionAttributes->shippingAssignments->item->shipping->address->street);
+    $billingadress = str_replace("\n", ", ", $order->billingAddress->street->item);
+    $shippingadress = str_replace("\n", ", ", $order->extensionAttributes->shippingAssignments->item->shipping->address->street->item);
 
     // Yritystilauksissa vaihdetaan yrityksen ja tilaajan nimi toisin päin
     if (isset($order->billingAddress->company)) {
@@ -111,10 +111,15 @@ class Edi {
       $shipping_contact = $order->extensionAttributes->shippingAssignments->item->shipping->address->company;
     }
     else {
-      $billing_company = $order->billingAddress->company;
+      $billing_company = '';
       $billing_contact = $order->billingAddress->lastname." ".$order->billingAddress->firstname;
 
-      $shipping_company = $order->extensionAttributes->shippingAssignments->item->shipping->address->company;
+      if(isset($order->extensionAttributes->shippingAssignments->item->shipping->address->company)){
+        $shipping_company = $order->extensionAttributes->shippingAssignments->item->shipping->address->company;
+      }
+      else {
+        $shipping_company = '';
+      }
       $shipping_contact = $order->extensionAttributes->shippingAssignments->item->shipping->address->lastname." ".$order->extensionAttributes->shippingAssignments->item->shipping->address->firstname;
     }
 
@@ -182,7 +187,13 @@ class Edi {
     $edi_order .= "OSTOTIL.OT_MAKSUEHTO:{$maksuehto}\n";
     $edi_order .= "OSTOTIL.OT_VIITTEEMME:\n";
     $edi_order .= "OSTOTIL.OT_VIITTEENNE:\n";
-    $edi_order .= "OSTOTIL.OT_TILAUSVIESTI:{$order->customerNote}\n";
+    if(isset($order->customerNote)){
+      $note = $order->customerNote;
+    }
+    else {
+      $note = '';
+    }
+    $edi_order .= "OSTOTIL.OT_TILAUSVIESTI:{$note}\n";
     $edi_order .= "OSTOTIL.OT_VEROMAARA:{$order->taxAmount}\n";
     $edi_order .= "OSTOTIL.OT_SUMMA:{$grand_total}\n";
     $edi_order .= "OSTOTIL.OT_VALUUTTAKOODI:{$order->orderCurrencyCode}\n";
@@ -199,7 +210,13 @@ class Edi {
     $edi_order .= "OSTOTIL.OT_POSTITOIMIPAIKKA:{$order->billingAddress->city}\n";
     $edi_order .= "OSTOTIL.OT_POSTINRO:{$order->billingAddress->postcode}\n";
     $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONPUH:{$order->billingAddress->telephone}\n";
-    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONFAX:{$order->billingAddress->fax}\n";
+    if(isset($order->fax)){
+      $fax = $order->fax;
+    }
+    else {
+      $fax = '';
+    }
+    $edi_order .= "OSTOTIL.OT_YHTEYSHENKILONFAX:{$fax}\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_YRITYS:\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_KATUOSOITE:\n";
     $edi_order .= "OSTOTIL.OT_MYYNTI_POSTITOIMIPAIKKA:\n";
@@ -214,14 +231,23 @@ class Edi {
     $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTITOIMIPAIKKA:{$order->extensionAttributes->shippingAssignments->item->shipping->address->city}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_POSTINRO:{$order->extensionAttributes->shippingAssignments->item->shipping->address->postcode}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_MAAKOODI:{$order->extensionAttributes->shippingAssignments->item->shipping->address->countryId}\n";
-    $edi_order .= "OSTOTIL.OT_TOIMITUS_PUH:{$orderextensionAttributes->shippingAssignments->item->shipping->address->telephone}\n";
+    $edi_order .= "OSTOTIL.OT_TOIMITUS_PUH:{$order->extensionAttributes->shippingAssignments->item->shipping->address->telephone}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_EMAIL:{$order->customerEmail}\n";
     $edi_order .= "OSTOTIL.OT_TOIMITUS_NOUTOPISTE_TUNNUS:{$noutopistetunnus}\n";
     $edi_order .= "*RE OSTOTIL\n";
 
     $i = 1;
 
-    foreach ($order->items->item as $item) {
+    //if only one product ordered, $order->items->item is an object not an array
+    //in that case need to convert object to array for handling the order properly
+    if(is_array($order->items->item) == false) {
+      $order_items[] = $order->items->item;
+    }
+    else{
+      $order_items = $order->items->item;
+    }
+
+    foreach ($order_items as $item) {
       $product_id = $item->productId;
 
       if ($item->productType != "configurable") {
@@ -236,7 +262,13 @@ class Edi {
         $kpl = $item->qtyOrdered * 1;
 
         // Hinta pitää hakea isältä
-        $result = search_array_key_for_value_recursive($order->items, "item_id", $item->parentItemId);
+        if (isset($item->parentItemId)) {
+          $parent_Item_Id = $item->parentItemId;
+        }
+        else {
+          $parent_Item_Id = null;
+        }
+        $result = search_array_key_for_value_recursive($order->items->item, "itemId", $parent_Item_Id);
 
         // Löyty yks tai enemmän, otetaan eka?
         if (count($result) != 0) {
