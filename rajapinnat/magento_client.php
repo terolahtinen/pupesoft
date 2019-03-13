@@ -2423,13 +2423,24 @@ $tuote_data_up = array(
     // Haetaan tilaukset (orders.status = 'processing')
     $fetched_orders = $this->get_client()->salesOrderRepositoryV1GetList($filter);
 
+    if ($fetched_orders->result->totalCount == 0) {
+      return $orders;
+    }
+
+    if (is_array($fetched_orders->result->items->item) == false) {
+      $fetched_orders_array[] = $fetched_orders->result->items->item;
+    }
+    else {
+      $fetched_orders_array = $fetched_orders->result->items->item;
+    }
+
     // HUOM: invoicella on state ja orderilla on status
     // Invoicen statet 'pending' => 1, 'paid' => 2, 'canceled' => 3
     // Invoicella on state
     // $filter = array(array('state' => array('eq' => 'paid')));
     // Haetaan laskut (invoices.state = 'paid')
 
-    foreach ($fetched_orders->result->items->item as $order) {
+    foreach ($fetched_orders_array as $order) {
       $this->log('magento_tilaukset', "Haetaan tilaus {$order->incrementId}");
 
       $order_id = [
@@ -2592,7 +2603,8 @@ $tuote_data_up = array(
     }
     //haetaan kuvan id, magento 2 soap käyttään kuvan id:tä kuvien poistoa varten
     $pictures_item = $pictures->result->item;
-
+    
+    //if only one picture to return, convert from object to array
     if(is_array($pictures_item) == false) {
       $return[] = $pictures_item->id;
       return $return;
