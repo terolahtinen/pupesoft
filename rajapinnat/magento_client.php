@@ -266,8 +266,8 @@ class MagentoClient {
     //   // Tarvitaan kategoriat
     //   $category_tree = $this->getCategories();
 
-    //   // Haetaan storessa olevat tuotenumerot
-    //   $skus_in_store = $this->getProductList(true);
+      // Haetaan storessa olevat tuotenumerot
+      $skus_in_store = $this->getProductList(true);
     // }
     // catch (Exception $e) {
     //   $this->_error_count++;
@@ -420,7 +420,7 @@ class MagentoClient {
         'additional_attributes' => array('multi_data' => $multi_data),
       );
 
-$tuote_data_up = array(
+      $tuote_data_up = array(
         //'categories'            => $category_ids,
         'websites'              => explode(" ", $tuote['nakyvyys']),
         'name'                  => utf8_encode($tuotteen_nimitys),
@@ -460,6 +460,47 @@ $tuote_data_up = array(
         unset($tuote_data[$poistettava_key]);
       }
 
+      //for magento 2 soap call, need to merge all custom attributes to the same array in 'attribute_code', 'value' format
+      //these will be given as custom_attributes in the call
+
+      $custom_attributes = [
+        [
+          'attribute_code' => 'category_ids',
+          'value' => $tuote_data['categories']
+        ],
+        [
+          'attribute_code' => 'description',
+          'value' => $tuote_data['description']
+        ],
+        [
+          'attribute_code' => 'short_description',
+          'value' => $tuote_data['short_description']
+        ],
+        [
+          'attribute_code' => 'tax_class_id',
+          'value' => $tuote_data['tax_class_id']
+        ],
+        [
+          'attribute_code' => 'campaign_code',
+          'value' => $tuote_data['campaign_code']
+        ],
+        [
+          'attribute_code' => 'onsale',
+          'value' => $tuote_data['onsale']
+        ],
+        [
+          'attribute_code' => 'target',
+          'value' => $tuote_data['target']
+        ]
+      ];
+
+      foreach($tuote_data['additional_attributes']['multi_data'] as $key => $value) {
+        $custom_attributes [] = [
+          'attribute_code' => $key,
+          'value' => $value
+        ];
+      }
+
       // Jos tuotetta ei ole olemassa niin lis�t��n se
       if (!in_array($tuote['tuoteno'], $skus_in_store)) {
         $toiminto = 'create';
@@ -471,14 +512,24 @@ $tuote_data_up = array(
             $this->log('magento_tuotteet', "Asetetaan tuote Disabled -tilaan");
           }
 
-          $product_id = $this->_proxy->call($this->_session, 'catalog_product.create',
-            array(
-              'simple',
-              $attribute_set_id,
-              $tuote['tuoteno'], // sku
-              $tuote_data,
-            )
-          );
+          $create_product_values = [
+            'product' => [
+              'sku' => $tuote['tuoteno'],
+              'name' => $tuote_data['name'],
+              'attributeSetId' => $attribute_set_id,
+              'price' => $tuote_data['price'],
+              'status' => $tuote_data['status'],
+              'typeId' => 'simple',
+              'weight' => $tuote_data['weight'],
+              'visibility' => $tuote_data['visibility'],
+              'extensionAttributes' => [
+                'websiteIds' => $tuote_data['websites']
+              ],
+              'custom_attributes' => $custom_attributes
+            ]
+          ];
+
+          $product_id = $this->get_client()->catalogProductRepositoryV1Save($create_product_values);
 
           $this->log('magento_tuotteet', "Tuote lis�tty");
           $this->debug('magento_tuotteet', $tuote_data);
@@ -486,19 +537,25 @@ $tuote_data_up = array(
           $is_in_stock = $this->tuote_aina_varastossa === true ? 1 : 0;
 
           // Pit�� k�yd� tekem�ss� viel� stock.update kutsu, ett� saadaan Manage Stock: YES
-          $stock_data = array(
-            'qty'          => 0,
-            'is_in_stock'  => $is_in_stock,
-            'manage_stock' => 1
-          );
 
-          $result = $this->_proxy->call(
-            $this->_session,
-            'product_stock.update',
-            array(
-              $tuote['tuoteno'], // sku
-              $stock_data
-            ));
+          $sku_for_status = [
+            'productSku' => $tuote['tuoteno']
+          ];
+
+          $current_stock_status = $this->get_client()->catalogInventoryStockRegistryV1GetStockStatusBySku($sku_for_status);
+          $updated_stock_status = $current_stock_status->result->stockItem;
+          $updated_stock_status->qty = 0;
+          $updated_stock_status->manageStock = 1;
+          $updated_stock_status->isInStock = $is_in_stock;
+
+          $updated_status = [
+            'productSku' => $tuote['tuoteno'],
+            'stockItem' => $updated_stock_status
+          ];
+
+          $result = $this->get_client()->catalogInventoryStockRegistryV1UpdateStockItemBySku($updated_status);
+
+          return;
         }
         catch (Exception $e) {
           $this->_error_count++;
