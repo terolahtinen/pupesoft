@@ -465,38 +465,38 @@ class MagentoClient {
 
       $custom_attributes = [
         [
-          'attribute_code' => 'category_ids',
+          'attributeCode' => 'category_ids',
           'value' => $tuote_data['categories']
         ],
         [
-          'attribute_code' => 'description',
+          'attributeCode' => 'description',
           'value' => $tuote_data['description']
         ],
         [
-          'attribute_code' => 'short_description',
+          'attributeCode' => 'short_description',
           'value' => $tuote_data['short_description']
         ],
         [
-          'attribute_code' => 'tax_class_id',
+          'attributeCode' => 'tax_class_id',
           'value' => $tuote_data['tax_class_id']
         ],
         [
-          'attribute_code' => 'campaign_code',
+          'attributeCode' => 'campaign_code',
           'value' => $tuote_data['campaign_code']
         ],
         [
-          'attribute_code' => 'onsale',
+          'attributeCode' => 'onsale',
           'value' => $tuote_data['onsale']
         ],
         [
-          'attribute_code' => 'target',
+          'attributeCode' => 'target',
           'value' => $tuote_data['target']
         ]
       ];
 
       foreach($tuote_data['additional_attributes']['multi_data'] as $key => $value) {
         $custom_attributes [] = [
-          'attribute_code' => $key,
+          'attributeCode' => $key,
           'value' => $value
         ];
       }
@@ -555,7 +555,6 @@ class MagentoClient {
 
           $result = $this->get_client()->catalogInventoryStockRegistryV1UpdateStockItemBySku($updated_status);
 
-          return;
         }
         catch (Exception $e) {
           $this->_error_count++;
@@ -575,9 +574,18 @@ class MagentoClient {
           $tuoteryhmayliajo = $this->_universal_tuoteryhma;
 
           // Haetaan tuotteen Magenton ID ja nykyiset kategoriat
-          $result = $this->_proxy->call($this->_session, 'catalog_product.info', $tuote['tuoteno']);
-          $product_id = $result['product_id'];
-          $current_categories = $result['categories'];
+          $sku_for_update = [
+            'sku' => $tuote['tuoteno']
+          ];
+
+          $result = $this->get_client()->catalogProductRepositoryV1Get($sku_for_update);
+          $product_id = $result->result->id;
+          foreach($result->result->customAttributes->item as $attributes) {
+            if (strcasecmp($attributes->attributeCode, 'category_ids') == 0) {
+              $current_categories = $attributes->value; //tämän hetkiset kategoriat
+              break;
+            }
+          }
 
           // Jos tuotteelta l�ytyy n�it� kategoriatunnuksia ennen updatea ne lis�t��n takaisin
           if (count($sticky_kategoriat) > 0 and count($current_categories) > 0) {
@@ -593,11 +601,68 @@ class MagentoClient {
             $tuote_data['categories'] = $current_categories;
           }
 
-          $this->_proxy->call($this->_session, 'catalog_product.update',
-            array(
-              $tuote['tuoteno'], // sku
-              $tuote_data_up)
-          );
+          //values as according to $tuote_data_up array
+          $custom_attributes_update = [
+            // [
+            //   'attributeCode' => 'category_ids',
+            //   'value' => $tuote_data['categories']
+            // ],
+            // [
+            //   'attributeCode' => 'description',
+            //   'value' => $tuote_data['description']
+            // ],
+            [
+              'attributeCode' => 'short_description',
+              'value' => $tuote_data['short_description']
+            ],
+            [
+              'attributeCode' => 'tax_class_id',
+              'value' => $tuote_data['tax_class_id']
+            ],
+            [
+              'attributeCode' => 'campaign_code',
+              'value' => $tuote_data['campaign_code']
+            ],
+            [
+              'attributeCode' => 'onsale',
+              'value' => $tuote_data['onsale']
+            ],
+            [
+              'attributeCode' => 'target',
+              'value' => $tuote_data['target']
+            ],
+            [
+              'attributeCode' => 'special_price',
+              'value' => $tuote_data_up['special_price']
+            ]
+          ];
+
+          foreach($tuote_data_up['additional_attributes']['multi_data'] as $key => $value) {
+            $custom_attributes_update [] = [
+              'attributeCode' => $key,
+              'value' => $value
+            ];
+          }
+
+          $update_product_values = [
+            'product' => [
+              'sku' => $tuote['tuoteno'],
+              'name' => $tuote_data_up['name'],
+              'price' => $tuote_data_up['price'],
+              'status' => $tuote_data_up['status'],
+              'weight' => $tuote_data_up['weight'],
+              // 'visibility' => $tuote_data['visibility'],
+              'extensionAttributes' => [
+                'websiteIds' => $tuote_data_up['websites']
+              ],
+              'custom_attributes' => $custom_attributes_update
+            ]
+          ];
+
+
+
+          $this->get_client()->catalogProductRepositoryV1Save($update_product_values);
+
 
           $this->log('magento_tuotteet', "Tuotetiedot p�ivitetty");
           $this->debug('magento_tuotteet', $tuote_data_up);
@@ -722,7 +787,7 @@ class MagentoClient {
       }
 
       // Lis�t��n kuvat Magentoon
-      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto, $tuote_clean);
+      $this->lisaa_ja_poista_tuotekuvat($product_id, $tuote['tunnus'], $toiminto, $tuote['tuoteno']);
 
       // Lis�t��n tuotteen asiakaskohtaiset tuotehinnat
       if ($this->_asiakaskohtaiset_tuotehinnat) {
