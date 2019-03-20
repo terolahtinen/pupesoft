@@ -770,14 +770,25 @@ class MagentoClient {
       $tuotteen_kauppakohtaiset_hinnat = $this->kauppakohtaiset_hinnat($tuote);
 
       foreach ($tuotteen_kauppakohtaiset_hinnat as $kauppatunnus => $tuotteen_kauppakohtainen_data) {
+        $hinnat_kauppakohtainen_update = [
+          'product' => [
+            'sku' => $tuote['tuoteno'],
+            'extensionAttributes' => [
+              'websiteIds' => $kauppatunnus
+            ]
+          ]
+        ];
+
+        if(isset($tuotteen_kauppakohtainen_data['price'])) {
+          $hinnat_kauppakohtainen_update['product']['price'] = $tuotteen_kauppakohtainen_data['price'];
+        }
+
+        if(isset($tuotteen_kauppakohtainen_data['tax_class_id'])) {
+          $hinnat_kauppakohtainen_update['product']['customAttributes'] = [['attributeCode' => 'tax_class_id', 'value' => $tuotteen_kauppakohtainen_data['tax_class_id']]];
+        }
+      
         try {
-          $this->_proxy->call($this->_session, 'catalog_product.update',
-            array(
-              $tuote['tuoteno'],
-              $tuotteen_kauppakohtainen_data,
-              $kauppatunnus
-            )
-          );
+          $this->get_client()->catalogProductRepositoryV1Save($hinnat_kauppakohtainen_update);
         }
         catch (Exception $e) {
           $this->_error_count++;
