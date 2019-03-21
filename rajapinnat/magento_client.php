@@ -2749,7 +2749,7 @@ class MagentoClient {
 
     if(!isset($pictures->result->item)) {
       $this->log('magento_tuotteet', "Tuotteella ei kuvia.");
-      return;
+      return $return;
     }
 
     //haetaan kuvan id, magento 2 soap käyttään kuvan id:tä kuvien poistoa varten
