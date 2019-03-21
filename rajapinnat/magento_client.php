@@ -746,13 +746,25 @@ class MagentoClient {
 
               $tuotteen_kauppakohtainen_data = array_merge($tuotteen_kauppakohtainen_data, $tuotteen_kauppakohtainen_data2, $tuotteen_kauppakohtainen_data3);
 
-              $this->_proxy->call($this->_session, 'catalog_product.update',
-                array(
-                  $tuote['tuoteno'],
-                  $tuotteen_kauppakohtainen_data,
-                  $kauppatunnus
-                )
-              );
+              foreach($tuotteen_kauppakohtainen_data as $data_key => $data_value) {
+                if(strcasecmp($data_key, 'name') == 0) {
+                  continue;
+                }
+                $custom_data[] = ['attributeCode' => $data_key, 'value' => $data_value];
+              }
+
+              $kauppakohtainen_data_paivitysarvot = [
+                'product' => [
+                  'sku' => $tuote['tuoteno'],
+                  'name' => $tuotteen_kauppakohtainen_data['name'],
+                  'extensionAttributes' => [
+                    'websites' => $kauppatunnus
+                  ],
+                  'customAttributes' => $custom_data
+                ]
+              ];
+
+              $this->get_client()->catalogProductRepositoryV1Save($kauppakohtainen_data_paivitysarvot);
             }
           }
 
@@ -2734,6 +2746,12 @@ class MagentoClient {
       $this->log('magento_tuotteet', "Virhe! Kuvalistauksen ep�onnistui", $e);
       $this->_error_count++;
     }
+
+    if(!isset($pictures->result->item)) {
+      $this->log('magento_tuotteet', "Tuotteella ei kuvia.");
+      return;
+    }
+
     //haetaan kuvan id, magento 2 soap käyttään kuvan id:tä kuvien poistoa varten
     $pictures_item = $pictures->result->item;
     
