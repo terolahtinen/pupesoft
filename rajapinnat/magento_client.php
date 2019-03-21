@@ -2748,7 +2748,7 @@ class MagentoClient {
     }
 
     if(!isset($pictures->result->item)) {
-      $this->log('magento_tuotteet', "Tuotteella ei kuvia.");
+      $this->log('magento_tuotteet', "Tuotteella ei kuvia Magentossa.");
       return $return;
     }
 
