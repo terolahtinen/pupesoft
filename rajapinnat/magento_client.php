@@ -2705,11 +2705,11 @@ class MagentoClient {
             'position' => 0,
             'disabled' => false,
             'types' => $types,
-          ],
-          'content' => [
-            'base64EncodedData' => $kuva['content'],
-            'type' => $kuva['mime'],
-            'name' => $kuva['name']
+            'content' => [
+              'base64EncodedData' => $kuva['content'],
+              'type' => $kuva['mime'],
+              'name' => $kuva['name']
+            ]
           ]
         ];
 
