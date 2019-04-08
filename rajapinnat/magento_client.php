@@ -460,7 +460,7 @@ class MagentoClient {
         unset($tuote_data[$poistettava_key]);
       }
 
-      //for magento 2 soap call, need to merge all custom attributes to the same array in 'attribute_code', 'value' format
+      //for magento 2 soap call, need to merge all custom attributes to the same array in 'attributeCode', 'value' format
       //these will be given as custom_attributes in the call
 
       $custom_attributes = [
@@ -525,7 +525,7 @@ class MagentoClient {
               'extensionAttributes' => [
                 'websiteIds' => $tuote_data['websites']
               ],
-              'custom_attributes' => $custom_attributes
+              'customAttributes' => $custom_attributes
             ]
           ];
 
@@ -655,7 +655,7 @@ class MagentoClient {
               'extensionAttributes' => [
                 'websiteIds' => $tuote_data_up['websites']
               ],
-              'custom_attributes' => $custom_attributes_update
+              'customAttributes' => $custom_attributes_update
             ]
           ];
 
