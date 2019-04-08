@@ -159,7 +159,7 @@ function tuote_export_hae_tuotetiedot($params) {
             ORDER BY tuote.tuoteno";
   $res = pupe_query($query);
 
-  // Pyöräytetään muuttuneet tuotteet l?pi
+  // Pyöräytetään muuttuneet tuotteet läpi
   while ($row = mysql_fetch_array($res)) {
     // Jos yhtiön hinnat eivät sisällä alv:tä
     if ($yhtiorow["alv_kasittely"] != "") {
