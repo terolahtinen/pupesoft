@@ -6,7 +6,7 @@ function tuote_export_tee_querylisa_resultista($tyyppi, array $tulokset) {
 
   // $tulokset = array(
   //   [0] => array("muuttuneet_tuotenumerot" => "'3','4'"),
-  //   [1] => array("muuttuneet_tuotenumerot" => "'12','24'"¥),
+  //   [1] => array("muuttuneet_tuotenumerot" => "'12','24'"¬¥),
   //   [2] => array("muuttuneet_tuotenumerot" => "'5'" )
   // );
   // -> 3','4','12','24','5'
@@ -113,7 +113,7 @@ function tuote_export_hae_tuotetiedot($params) {
   global $kukarow, $yhtiorow;
 
   $ajetaanko_kaikki                     = $params['ajetaanko_kaikki'];
-  $kieliversiot                         = $params['kieliversiot']; //tulee muodossa array(fi,en,ee) ja v‰hint‰‰n aina fi
+  $kieliversiot                         = $params['kieliversiot']; //tulee muodossa array(fi,en,ee) ja v√§hint√§√§n aina fi
   $datetime_checkpoint                  = tuote_export_checkpoint('TEX_TUOTTEET');
   $magento_asiakaskohtaiset_tuotehinnat = $params['magento_asiakaskohtaiset_tuotehinnat'];
   $tuotteiden_asiakashinnat_magentoon   = $params['tuotteiden_asiakashinnat_magentoon'];
@@ -159,9 +159,9 @@ function tuote_export_hae_tuotetiedot($params) {
             ORDER BY tuote.tuoteno";
   $res = pupe_query($query);
 
-  // Pyˆr‰ytet‰‰n muuttuneet tuotteet l‰pi
+  // Py√∂r√§ytet√§√§n muuttuneet tuotteet l?pi
   while ($row = mysql_fetch_array($res)) {
-    // Jos yhtiˆn hinnat eiv‰t sis‰ll‰ alv:t‰
+    // Jos yhti√∂n hinnat eiv√§t sis√§ll√§ alv:t√§
     if ($yhtiorow["alv_kasittely"] != "") {
       $myyntihinta = $row["myyntihinta"];
       $myyntihinta_veroton = $row["myyntihinta"];
@@ -229,7 +229,7 @@ function tuote_export_hae_tuotetiedot($params) {
       );
     }
 
-    // Jos tuote kuuluu tuotepuuhun niin etsit‰‰n kategoria_idt myˆs kaikille tuotepuun kategorioille
+    // Jos tuote kuuluu tuotepuuhun niin etsit√§√§n kategoria_idt my√∂s kaikille tuotepuun kategorioille
     $query = "SELECT t0.nimi node, t0.lft,
               tuote.tuoteno,
               GROUP_CONCAT(t5.nimi SEPARATOR '\n') children,
@@ -277,14 +277,29 @@ function tuote_export_hae_tuotetiedot($params) {
               WHERE yhtio = '{$kukarow['yhtio']}'
               AND tuoteno = '{$row['tuoteno']}'
               AND maa = '{$yhtiorow['maa']}'
-              AND laji = ''
+              AND (laji = 'E' OR laji = 'N')
               AND ((alkupvm <= current_date and if (loppupvm = '0000-00-00','9999-12-31',loppupvm) >= current_date) or (alkupvm='0000-00-00' and loppupvm='0000-00-00'))
               ORDER BY ifnull(to_days(current_date)-to_days(alkupvm),9999999999999)
               LIMIT 1";
     $hinnastoq = pupe_query($query);
     $hinnastoresult = mysql_fetch_assoc($hinnastoq);
 
-    // Nollataan t‰m‰ jos query lyˆ tyhj‰‰, muuten vanhentunut tarjoushinta ei ylikirjoitu magentossa
+    // Katsotaan onko tuotteelle voimassaolevaa v√§liaikaista myyntihintaa
+    $query = "SELECT *
+              FROM hinnasto
+              WHERE yhtio = '{$kukarow['yhtio']}'
+              AND tuoteno = '{$row['tuoteno']}'
+              AND maa = '{$yhtiorow['maa']}'
+              AND laji = ''
+              AND ((alkupvm <= current_date and if (loppupvm = '0000-00-00','9999-12-31',loppupvm) >= current_date) or (alkupvm='0000-00-00' and loppupvm='0000-00-00'))
+              ORDER BY ifnull(to_days(current_date)-to_days(alkupvm),9999999999999)
+              LIMIT 1";
+    $myyntihinnastoq = pupe_query($query);
+    $myyntihinnastoresult = mysql_fetch_assoc($myyntihinnastoq);
+    
+    if (isset($myyntihinnastoresult['hinta'])) $myyntihinta = $myyntihinnastoresult['hinta'];
+
+    // Nollataan t√§m√§ jos query ly√∂ tyhj√§√§, muuten vanhentunut tarjoushinta ei ylikirjoitu magentossa
     if (!isset($hinnastoresult['hinta'])) $hinnastoresult['hinta'] = '';
 
     $dnstuote[] = array(
@@ -293,6 +308,8 @@ function tuote_export_hae_tuotetiedot($params) {
       'campaign_code'        => $row["campaign_code"],
       'ean'                  => $row["eankoodi"],
       'hinnastohinta'        => $hinnastoresult['hinta'],
+      //'hinnastoalku'         => $hinnastoresult['alkupvm'],
+      //'hinnastoloppu'        => $hinnastoresult['loppupvm'],
       'korkeus'              => $row['tuotekorkeus'],
       'kuluprosentti'        => $row['kuluprosentti'],
       'kuvaus'               => $row["kuvaus"],
@@ -335,7 +352,7 @@ function tuote_export_hae_poistettavat_tuotteet() {
   $kaikki_tuotteet = array();
   $individual_tuotteet = array();
 
-  // Haetaan pupesta kaikki tuotteet (ja configurable-tuotteet), jotka pit‰‰ olla Magentossa
+  // Haetaan pupesta kaikki tuotteet (ja configurable-tuotteet), jotka pit√§√§ olla Magentossa
   $query = "SELECT DISTINCT tuote.tuoteno, tuotteen_avainsanat.selite configurable_tuoteno
             FROM tuote
             LEFT JOIN tuotteen_avainsanat ON (tuote.yhtio = tuotteen_avainsanat.yhtio
@@ -379,13 +396,13 @@ function tuote_export_hae_saldot($params) {
   $dnstock = array();
 
   if (!is_array($verkkokauppa_saldo_varasto)) {
-     echo "Virhe! verkkokauppa_saldo_varasto pit‰‰ olla array!";
+     echo "Virhe! verkkokauppa_saldo_varasto pit√§√§ olla array!";
 
      return $dnstock;
   }
 
   if (!is_array($vaihtoehtoiset_saldot)) {
-     echo "Virhe! vaihtoehtoiset_saldot pit‰‰ olla array!";
+     echo "Virhe! vaihtoehtoiset_saldot pit√§√§ olla array!";
 
      return $dnstock;
   }
@@ -401,7 +418,7 @@ function tuote_export_hae_saldot($params) {
     $muutoslisa3 = "";
   }
 
-  // Haetaan saldot tuotteille, joille on tehty tunnin sis‰ll‰ tilausrivi tai tapahtuma
+  // Haetaan saldot tuotteille, joille on tehty tunnin sis√§ll√§ tilausrivi tai tapahtuma
   $query =  "(SELECT tapahtuma.tuoteno,
               tuote.eankoodi
               FROM tapahtuma
@@ -461,7 +478,7 @@ function tuote_export_hae_saldot($params) {
   $result = pupe_query($query);
 
   while ($row = mysql_fetch_assoc($result)) {
-    // jos halutaan vaihtoehtoisia saldoja omiin kenttiin, lasketaan ne t‰ss‰
+    // jos halutaan vaihtoehtoisia saldoja omiin kenttiin, lasketaan ne t√§ss√§
     $vaihtoehtoiset_kentat = array();
 
     foreach($vaihtoehtoiset_saldot as $varasto_kentta => $varasto_tunnukset) {
@@ -494,7 +511,7 @@ function tuote_export_saldo_myytavissa($tuoteno, Array $varastot) {
 
   list(, , $myytavissa) = saldo_myytavissa($tuoteno, '', $varastot);
 
-  // saldo myyt‰viss‰ palautta false, jos tuotteella ei ole paikkaa kysytyss‰ varastossa
+  // saldo myyt√§viss√§ palautta false, jos tuotteella ei ole paikkaa kysytyss√§ varastossa
   $saldo = ($myytavissa === false) ? 0 : $myytavissa;
 
   return $saldo;
@@ -577,7 +594,7 @@ function tuote_export_hae_asiakkaat($params) {
   }
 
   // Haetaan kaikki asiakkaat
-  // Asiakassiirtoa varten poimitaan myˆs lis‰kentti‰ yhteyshenkilo-tauluista
+  // Asiakassiirtoa varten poimitaan my√∂s lis√§kentti√§ yhteyshenkilo-tauluista
   $query = "SELECT
             asiakas.*,
             avainsana.selitetark as asiakasryhma,
@@ -601,9 +618,9 @@ function tuote_export_hae_asiakkaat($params) {
             {$muutoslisa}";
   $res = pupe_query($query);
 
-  // pyˆr‰ytet‰‰n asiakkaat l‰pi
+  // py√∂r√§ytet√§√§n asiakkaat l√§pi
   while ($row = mysql_fetch_array($res)) {
-    // Osoite laskutusosoitteeksi jos tyhj‰
+    // Osoite laskutusosoitteeksi jos tyhj√§
     if (empty($row['laskutus_nimi'])) {
       $row["laskutus_nimi"]    = $row['nimi'];
       $row["laskutus_osoite"]  = $row['osoite'];
@@ -611,7 +628,7 @@ function tuote_export_hae_asiakkaat($params) {
       $row["laskutus_postitp"] = $row['postitp'];
     }
 
-    // Osoite toimitusosoitteeksi jos tyhj‰
+    // Osoite toimitusosoitteeksi jos tyhj√§
     if (empty($row['toim_nimi'])) {
       $row['toim_nimi']    = $row['nimi'];
       $row["toim_osoite"]  = $row['osoite'];
@@ -619,13 +636,13 @@ function tuote_export_hae_asiakkaat($params) {
       $row["toim_postitp"] = $row['postitp'];
     }
 
-    // Yhteyshenkilˆn nimest‰ otetaan etunimi ja sukunimi
+    // Yhteyshenkil√∂n nimest√§ otetaan etunimi ja sukunimi
     if (!empty($row["yhenk_nimi"])) {
-      // Viimeinen osa nimest‰ on sukunimi
+      // Viimeinen osa nimest√§ on sukunimi
       $_last = explode(' ', $row['yhenk_nimi']);
       $yhenk_sukunimi = end($_last);
 
-      // Ensimm‰iset osat etunimi‰
+      // Ensimm√§iset osat etunimi√§
       $yhenk_etunimi = explode(' ', $row['yhenk_nimi']);
 
       array_pop($yhenk_etunimi);
@@ -671,7 +688,7 @@ function tuote_export_hae_lajitelmatuotteet($params) {
   global $kukarow, $yhtiorow;
 
   $ajetaanko_kaikki = $params['ajetaanko_kaikki'];
-  $kieliversiot = $params['kieliversiot']; //tulee muodossa array(fi,en,ee) ja v‰hint‰‰n aina fi
+  $kieliversiot = $params['kieliversiot']; //tulee muodossa array(fi,en,ee) ja v√§hint√§√§n aina fi
 
   $datetime_checkpoint = tuote_export_checkpoint('TEX_LAJITELMAT');
 
@@ -709,7 +726,7 @@ function tuote_export_hae_lajitelmatuotteet($params) {
 
   // loopataan variaatio-nimitykset
   while ($rowselite = mysql_fetch_assoc($resselite)) {
-    // Haetaan kaikki tuotteet, jotka kuuluu t‰h‰n variaatioon
+    // Haetaan kaikki tuotteet, jotka kuuluu t√§h√§n variaatioon
     $aliselect = "SELECT
                   tuote.*,
                   tuotteen_avainsanat.tuoteno,
@@ -767,7 +784,7 @@ function tuote_export_hae_lajitelmatuotteet($params) {
         );
       }
 
-      // Jos yhtiˆn hinnat eiv‰t sis‰ll‰ alv:t‰
+      // Jos yhti√∂n hinnat eiv√§t sis√§ll√§ alv:t√§
       if ($yhtiorow["alv_kasittely"] != "") {
         $myyntihinta = $alirow["myyntihinta"];
         $myyntihinta_veroton = $alirow["myyntihinta"];
@@ -780,7 +797,7 @@ function tuote_export_hae_lajitelmatuotteet($params) {
       $myymalahinta = $alirow["myymalahinta"];
       $myymalahinta_veroton = hintapyoristys($alirow["myymalahinta"] / (1+($alirow["alv"]/100)));
 
-      // Jos tuote kuuluu tuotepuuhun niin etsit‰‰n kategoria_idt myˆs kaikille tuotepuun kategorioille
+      // Jos tuote kuuluu tuotepuuhun niin etsit√§√§n kategoria_idt my√∂s kaikille tuotepuun kategorioille
       $query = "SELECT t0.nimi node, t0.lft,
                 tuote.tuoteno,
                 GROUP_CONCAT(t5.nimi SEPARATOR '\n') children,
@@ -835,7 +852,7 @@ function tuote_export_hae_lajitelmatuotteet($params) {
       $hinnastoq = pupe_query($query);
       $hinnastoresult = mysql_fetch_assoc($hinnastoq);
 
-      // Nollataan t‰m‰ jos query lyˆ tyhj‰‰, muuten vanhentunut tarjoushinta ei ylikirjoitu magentossa
+      // Nollataan t√§m√§ jos query ly√∂ tyhj√§√§, muuten vanhentunut tarjoushinta ei ylikirjoitu magentossa
       if (!isset($hinnastoresult['hinta'])) $hinnastoresult['hinta'] = '';
 
       $dnslajitelma[$rowselite["selite"]][] = array(
@@ -881,12 +898,12 @@ function tuote_export_checkpoint($checkpoint) {
   // Haetaan timestamp avainsanoista
   $checkpoint_res = t_avainsana($checkpoint, 'fi');
 
-  // otetaan viimeisen ajon timestamppi talteen ja p‰ivitet‰‰n t‰m‰ hetki
+  // otetaan viimeisen ajon timestamppi talteen ja p√§ivitet√§√§n t√§m√§ hetki
   if (mysql_num_rows($checkpoint_res) != 0) {
     $row = mysql_fetch_assoc($checkpoint_res);
     $selite = $row['selite'];
 
-    // P‰ivitet‰‰n timestamppi t‰h‰n hetkeen
+    // P√§ivitet√§√§n timestamppi t√§h√§n hetkeen
     $query = "UPDATE avainsana SET
               selite      = now()
               WHERE yhtio = '{$kukarow['yhtio']}'
@@ -894,10 +911,10 @@ function tuote_export_checkpoint($checkpoint) {
     pupe_query($query);
   }
   else {
-    // timestamppia ei lˆydy, eli t‰m‰ on ensimm‰inen ajo
+    // timestamppia ei l√∂ydy, eli t√§m√§ on ensimm√§inen ajo
     $selite = date('Y-m-d H:i:s', mktime(0, 0, 0, 1, 1, 1970));
 
-    // P‰ivitet‰‰n timestamppi talteen
+    // P√§ivitet√§√§n timestamppi talteen
     $query = "INSERT INTO avainsana SET
               kieli      = 'fi',
               laatija    = '{$kukarow['kuka']}',
@@ -922,7 +939,7 @@ function tuote_export_hae_tuotteen_avainsanat($tuoteno) {
 
   $tuotteen_avainsanat = array();
 
-  // Haetaan tuotteen avainsanat (ei parametrej‰)
+  // Haetaan tuotteen avainsanat (ei parametrej√§)
   $query = "SELECT tuotteen_avainsanat.kieli,
             tuotteen_avainsanat.laji,
             tuotteen_avainsanat.selite,
