@@ -79,17 +79,17 @@ if (empty($magento_client_options)) {
 
 // Lokitetaanko debug -tietoa lokitiedostoon
 if (empty($magento_debug)) {
-  $magento_debug = false;
+  $magento_debug = true;
 }
 
 // Verkkokaupan "tax_class_id" tunnus
 if (empty($magento_tax_class_id)) {
-  $magento_tax_class_id = 1;
+  $magento_tax_class_id = 5;
 }
 
 // Verkkokaupan "root" kategorian tunnus
 if (empty($magento_parent_id)) {
-  $magento_parent_id = 1;
+  $magento_parent_id = 2;
 }
 
 // Magento websiten ID, joka laitetaan asiakashaussa mukaan resulttiin
@@ -119,7 +119,14 @@ if (empty($magento_salli_tuotepoistot)) {
 
 // Lis‰t‰‰nkˆ tuotekuvat
 if (!isset($magento_lisaa_tuotekuvat)) {
-  $magento_lisaa_tuotekuvat = true;
+  $magento_lisaa_tuotekuvat = 'create_only';
+}
+$viides_parametri = empty($argv[5]) ? false : true;
+if ($viides_parametri == true) {
+  $magento_lisaa_tuotekuvat = '';
+}
+if ($ajetaanko_kaikki == false) {
+  $magento_lisaa_tuotekuvat = '';
 }
 
 // Mit‰ tuotteen kentt‰‰ k‰ytet‰‰n simple-tuotteen nimityksess‰
@@ -180,7 +187,7 @@ if (empty($magento_sisaanluvun_esto)) {
 // Halutaanko merkata kaikki uudet tuotteet aina samaan tuoteryhm‰‰n ja
 // est‰‰ tuoteryhm‰n yliajo tuotep‰ivityksess‰
 if (empty($magento_universal_tuoteryhma)) {
-  $magento_universal_tuoteryhma = '';
+  $magento_universal_tuoteryhma = 'Uudet tuotteet';
 }
 
 // Halutaanko perustaa tuotteet aina 'disabled' -tilaan
@@ -303,7 +310,7 @@ if (empty($magento_saldot_tuotekenttaan)) {
 
 // N‰ytet‰‰nkˆ Magentossa tuotteet aina tilassa "varastossa" saldosta riippumatta
 if (empty($magento_tuote_aina_varastossa)) {
-  $magento_tuote_aina_varastossa = false;
+  $magento_tuote_aina_varastossa = true;
 }
 
 if (empty($magento_tehdas_saldot)) {
