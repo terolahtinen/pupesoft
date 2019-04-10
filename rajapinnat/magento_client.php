@@ -7,7 +7,7 @@ if (!isset($use_magento2_version)) {
 }
 
 if ($use_magento2_version === true) {
-    require_once "magento_client_m1.php";
+    require_once "magento_client_m2.php";
 } else {
     require_once "magento_client_m1.php";
 }
