@@ -253,6 +253,8 @@ class MagentoClient {
   public function lisaa_simple_tuotteet(array $dnstuote, array $individual_tuotteet) {
     $this->log('magento_tuotteet', "Lis�t��n tuotteita (simple)");
 
+    global $defined_storeId;
+
     $hintakentta = $this->_hintakentta;
     $selected_category = $this->_kategoriat;
     $verkkokauppatuotteet_erikoisparametrit = $this->_verkkokauppatuotteet_erikoisparametrit;
@@ -401,7 +403,7 @@ class MagentoClient {
 
       $tuote_data = array(
         'categories'            => $category_ids,
-        'websites'              => explode(" ", $tuote['nakyvyys']),
+        'websites'              => $defined_storeId,//explode(" ", $tuote['nakyvyys']),
         'name'                  => utf8_encode($tuotteen_nimitys),
         'description'           => utf8_encode($tuote['kuvaus']),
         'short_description'     => utf8_encode($tuote['lyhytkuvaus']),
@@ -422,7 +424,7 @@ class MagentoClient {
 
       $tuote_data_up = array(
         //'categories'            => $category_ids,
-        'websites'              => explode(" ", $tuote['nakyvyys']),
+        'websites'              => $defined_storeId,//explode(" ", $tuote['nakyvyys']),
         'name'                  => utf8_encode($tuotteen_nimitys),
         //'description'           => utf8_encode($tuote['kuvaus']),
         'short_description'     => utf8_encode($tuote['lyhytkuvaus']),
@@ -523,7 +525,9 @@ class MagentoClient {
               'weight' => $tuote_data['weight'],
               'visibility' => $tuote_data['visibility'],
               'extensionAttributes' => [
-                'websiteIds' => $tuote_data['websites']
+                'websiteIds' => [
+                  'item' => $tuote_data['websites']
+                ]
               ],
               'customAttributes' => $custom_attributes
             ]
@@ -653,7 +657,9 @@ class MagentoClient {
               'weight' => $tuote_data_up['weight'],
               // 'visibility' => $tuote_data['visibility'],
               'extensionAttributes' => [
-                'websiteIds' => $tuote_data_up['websites']
+                'websiteIds' => [
+                  'item' => $tuote_data_up['websites']
+                ]
               ],
               'customAttributes' => $custom_attributes_update
             ]
