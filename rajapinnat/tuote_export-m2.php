@@ -16,7 +16,7 @@ date_default_timezone_set('Europe/Helsinki');
 
 require "inc/connect.inc";
 require "inc/functions.inc";
-require "rajapinnat/magento_client.php";
+require "rajapinnat/magento_client-m2.php";
 require "rajapinnat/tuote_export_functions.php";
 
 if (empty($argv[1])) {
@@ -60,7 +60,7 @@ $ajetaanko_kaikki = empty($argv[4]) ? false : true;
 // T‰ss‰ kaikki magentorajapinnan configurointimuuttujat
 
 // Varmistetaan, ett‰ pakolliset muuttujat on asetettu
-if (empty($magento_api_te_url) or empty($magento_api_te_usr) or empty($magento_api_te_pas)) {
+if (empty($magento_api_base_url) or empty($magento_bearer)) {
   die("Magento parametrit puuttuu, p‰ivityst‰ ei voida ajaa.");
 }
 
@@ -123,11 +123,11 @@ if (!isset($magento_lisaa_tuotekuvat)) {
 }
 $viides_parametri = empty($argv[5]) ? false : true;
 if ($viides_parametri == true) {
-    $magento_lisaa_tuotekuvat = '';
+  $magento_lisaa_tuotekuvat = '';
 }
 if ($ajetaanko_kaikki == false) {
-    $magento_lisaa_tuotekuvat = '';
-    }
+  $magento_lisaa_tuotekuvat = '';
+}
 
 // Mit‰ tuotteen kentt‰‰ k‰ytet‰‰n simple-tuotteen nimityksess‰
 if (empty($magento_simple_tuote_nimityskentta)) {
@@ -336,9 +336,8 @@ pupesoft_flock($lock_params);
 tuote_export_echo("Aloitetaan Magento-siirto.");
 
 $magento_client = new MagentoClient(
-  $magento_api_te_url,
-  $magento_api_te_usr,
-  $magento_api_te_pas,
+  $magento_api_base_url,
+  $magento_bearer,
   $magento_client_options,
   $magento_debug
 );
@@ -484,9 +483,8 @@ if (in_array('tilaukset', $magento_ajolista)) {
   tuote_export_echo("Haetaan tilaukset");
 
   $magento_tilaus_client = new MagentoClient(
-    $magento_api_ht_url,
-    $magento_api_ht_usr,
-    $magento_api_ht_pas,
+    $magento_api_base_url,
+    $magento_bearer,
     $magento_client_options,
     $magento_debug
   );
