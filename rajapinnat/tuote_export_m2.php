@@ -16,7 +16,7 @@ date_default_timezone_set('Europe/Helsinki');
 
 require "inc/connect.inc";
 require "inc/functions.inc";
-require "rajapinnat/magento_client-m2.php";
+require "rajapinnat/magento_client.php";
 require "rajapinnat/tuote_export_functions.php";
 
 if (empty($argv[1])) {
