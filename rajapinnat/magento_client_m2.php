@@ -446,6 +446,12 @@ class MagentoClient {
         //'tier_price'            => $tuote_ryhmahinta_data,
         'additional_attributes' => array('multi_data' => $multi_data),
       );
+
+      if (empty($tuote_data_up['special_price'])) {
+        $tuote_data_up['additional_attributes']['multi_data']['special_to_date'] = '2000-01-01 00:00:00';
+      } else {
+        $tuote_data_up['additional_attributes']['multi_data']['special_to_date'] = '';
+      }
       
       // Asetetaan tuotteen url_key mik�li parametrit m��ritelty
       if (count($this->_magento_url_key_attributes) > 0) {
