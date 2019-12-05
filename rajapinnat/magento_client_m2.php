@@ -16,7 +16,7 @@ class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
   // service order matters here, adding a new service might break functionality
-  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1';
+  const DEFAULT_SERVICES = 'customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1,catalogProductAttributeRepositoryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -420,6 +420,8 @@ class MagentoClient {
         'target'                => utf8_encode($tuote['target']),
         //'tier_price'            => $tuote_ryhmahinta_data,
         'additional_attributes' => array('multi_data' => $multi_data),
+        'alennusryhma'          => utf8_encode($tuote['alennusryhma']),
+        'vakkoodi'              => $tuote['vakkoodi'],//rahtilisät
       );
 
       $tuote_data_up = array(
@@ -445,7 +447,16 @@ class MagentoClient {
         'target'                => utf8_encode($tuote['target']),
         //'tier_price'            => $tuote_ryhmahinta_data,
         'additional_attributes' => array('multi_data' => $multi_data),
+        'alennusryhma'          => utf8_encode($tuote['alennusryhma']),
+        'vakkoodi'              => $tuote['vakkoodi'],//rahtilisät
       );
+
+      $rahtilisa_magento_value = '';
+
+      if (!empty($tuote_data['vakkoodi']) || !empty($tuote_data_up['vakkoodi'])) {
+        //same value on both arrays, using value from array $tuote_data
+        $rahtilisa_magento_value = $this->rahtilisa_attribute($tuote_data['vakkoodi']);
+      }
 
       if (empty($tuote_data_up['special_price'])) {
         $tuote_data_up['additional_attributes']['multi_data']['special_to_date'] = '2000-01-01 00:00:00';
@@ -499,6 +510,14 @@ class MagentoClient {
         [
           'attributeCode' => 'target',
           'value' => $tuote_data['target']
+        ],
+        [
+          'attributeCode' => 'rahtilisat',
+          'value' => $rahtilisa_magento_value
+        ],
+        [
+          'attributeCode' => 'alennusryhma',
+          'value' => $tuote_data['alennusryhma']
         ]
       ];
 
@@ -644,6 +663,14 @@ class MagentoClient {
             [
               'attributeCode' => 'special_price',
               'value' => $tuote_data_up['special_price']
+            ],
+            [
+              'attributeCode' => 'rahtilisat',
+              'value' => $rahtilisa_magento_value
+            ],
+            [
+              'attributeCode' => 'alennusryhma',
+              'value' => $tuote_data_up['alennusryhma']
             ]
           ];
 
@@ -2961,4 +2988,28 @@ class MagentoClient {
     // );
     return $return_array;
   }
+
+  //added function to get correct "Rahtilisät" value for magento 2
+  function rahtilisa_attribute($attribute_label) {
+    $labels = explode(',',$attribute_label);
+    $value = '';
+    $attribute = [
+      'attributeCode' => 'rahtilisat'
+    ];
+
+    $options_object =  $this->get_client()->catalogProductAttributeRepositoryV1Get($attribute)->result->options;
+
+    foreach($options_object->item as $option) {
+      foreach($labels as $label) {
+        if($option->label == $label) {
+          if(!empty($value)) {
+            $value .= ',';
+          }
+          $value .= $option->value;
+        }
+      }
+    }
+    return $value;
+  }
+
 }
