@@ -23,6 +23,10 @@ class Edi {
 
     $order = $order_object->result;
 
+    if (!empty($order->billingAddress->vatId)) {
+      $verkkokauppa_asiakasnro = $order->billingAddress->vatId;
+    }
+
     if (empty($magento_api_ht_edi) or empty($ovt_tunnus) or empty($pupesoft_tilaustyyppi)) {
       die("Parametrejä puuttuu\n");
     }
