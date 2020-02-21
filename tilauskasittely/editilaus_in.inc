@@ -932,7 +932,7 @@ while ($tietue = fgets($fd)) {
       $query = "SELECT *
                 FROM asiakas
                 WHERE yhtio    = '$kukarow[yhtio]'
-                and asiakasnro = '$tieto'
+                and ytunnus = '$tieto'
                 and asiakasnro not in ('','0')
                 and laji       not in ('R','P')";
       $result = pupe_query($query);
