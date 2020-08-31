@@ -153,6 +153,8 @@ class MagentoClient {
   // Default kielen lis�ksi muut tuetut kauppakohtaiset kieliversiot, esim array("en" => array('4','13'), "se" => array('9'));
   private $_TuetutKieliversiot = array();
 
+  static $pdo = false;
+
   function __construct($base_url, $bearer/*, $client_options = array(), $debug = false*/) {
       global $magento_parent_root_category;
       $this->parent_id = $magento_parent_root_category;
@@ -482,6 +484,20 @@ class MagentoClient {
       //for magento 2 soap call, need to merge all custom attributes to the same array in 'attributeCode', 'value' format
       //these will be given as custom_attributes in the call
 
+
+
+
+      $supplier_saldo_values = $this->get_supplier_saldo($tuote['tuoteno']);
+      if ($supplier_saldo_arr !== false) {
+        $supplier_saldo = $supplier_saldo_values['qty'];
+        $supplier_available_again = $supplier_saldo_values['available_again'];
+      } else {
+        $supplier_saldo = '-1';
+        $supplier_available_again = '0000-00-00';
+      }
+
+
+
       $custom_attributes = [
         [
           'attributeCode' => 'category_ids',
@@ -518,7 +534,15 @@ class MagentoClient {
         [
           'attributeCode' => 'alennusryhma',
           'value' => $tuote_data['alennusryhma']
-        ]
+        ],
+        [
+          'attributeCode' => 'supplier_saldo',
+          'value' => $supplier_saldo
+        ],
+        [
+          'attributeCode' => 'supplier_available_again',
+          'value' => $supplier_available_again
+        ],
       ];
 
       foreach($tuote_data['additional_attributes']['multi_data'] as $key => $value) {
@@ -3010,6 +3034,55 @@ class MagentoClient {
       }
     }
     return $value;
+  }
+
+  /***
+   *   Get supplier saldo AND expected availability date, if set
+   * 
+   * Returns only one supplier, the one with most in stock, or if no-one has stock, the one with soonest availablity, if no supplier saldo available, returns false
+   * 
+   * really should have mvc-model
+   * 
+   *  param $product_id
+   * 
+   */
+  function get_supplier_saldo($product_num) {
+    $stmt = self::$pdo->prepare("SELECT * FROM `tuotteen_toimittajat` WHERE tuoteno = ? ORDER BY `tehdas_saldo` DESC, `tehdas_saldo_toimaika` DESC");
+    $stmt->execute(array($product_num));
+
+    $supplier_saldo = array();
+
+    $row = $stmt->fetch();
+    if ($row) {
+       return array(
+        'supplier_code' => $row['liitostunnus'],
+        'qty' => $row['tehdas_saldo'],
+        'available_again' => date('Y-m-d', strtotime('+ ' . $row['tehdas_saldo_toimaika'] . ' days'))
+      );
+    }
+
+    return false;
+    }
+  }
+
+  /**
+   * connect pdo, return pdo object or false
+   */
+  protected function connect_pdo() {
+    global $dbhost;
+    global $dbuser;
+    global $dbpass;
+    global $dbkanta;
+
+    $dsn = "mysql:dbname={$dbkanta};host={$dbhost}";
+    if (self::$pdo) { // connect only once
+        return; 
+    }
+    try {
+        self::$pdo = new PDO($dsn, $dbuser, $dbpass);
+    } catch (PDOException $e) {
+       die( "Database connection failed " . $e->getMessage());           
+    }
   }
 
 }
