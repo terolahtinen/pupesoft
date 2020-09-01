@@ -16,7 +16,7 @@ class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
   // service order matters here, adding a new service might break functionality
-  const DEFAULT_SERVICES = 'customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1,catalogProductAttributeRepositoryV1';
+  const DEFAULT_SERVICES = 'customerGroupRepositoryV1,catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1,catalogProductAttributeRepositoryV1,catalogAttributeSetRepositoryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -261,6 +261,7 @@ class MagentoClient {
     $selected_category = $this->_kategoriat;
     $verkkokauppatuotteet_erikoisparametrit = $this->_verkkokauppatuotteet_erikoisparametrit;
 
+
     // Tuote countteri
     $count = 0;
     $total_count = count($dnstuote);
@@ -281,6 +282,7 @@ class MagentoClient {
 
     // Lis�t��n tuotteet eriss�
     foreach ($dnstuote as $tuote) {
+
       $tuote_clean = $tuote['tuoteno'];
       if (is_numeric($tuote['tuoteno'])) $tuote['tuoteno'] = "SKU_".$tuote['tuoteno'];
 
@@ -497,7 +499,6 @@ class MagentoClient {
       }
 
 
-
       $custom_attributes = [
         [
           'attributeCode' => 'category_ids',
@@ -542,7 +543,7 @@ class MagentoClient {
         [
           'attributeCode' => 'supplier_available_again',
           'value' => $supplier_available_again
-        ],
+        ]
       ];
 
       foreach($tuote_data['additional_attributes']['multi_data'] as $key => $value) {
@@ -695,8 +696,17 @@ class MagentoClient {
             [
               'attributeCode' => 'alennusryhma',
               'value' => $tuote_data_up['alennusryhma']
+            ],
+            [
+              'attributeCode' => 'supplier_saldo',
+              'value' => $supplier_saldo
+            ],
+            [
+              'attributeCode' => 'supplier_available_again',
+              'value' => $supplier_available_again
             ]
           ];
+
 
           foreach($tuote_data_up['additional_attributes']['multi_data'] as $key => $value) {
             $custom_attributes_update [] = [
@@ -738,6 +748,7 @@ class MagentoClient {
           continue;
         }
       }
+
 
       // P�ivitet��n tuotteen kieliversiot kauppan�kym�kohtaisesti
       // jos n�m� on asetettu konffissa
@@ -3047,6 +3058,9 @@ class MagentoClient {
    * 
    */
   function get_supplier_saldo($product_num) {
+
+    $this->connect_pdo();
+
     $stmt = self::$pdo->prepare("SELECT * FROM `tuotteen_toimittajat` WHERE tuoteno = ? ORDER BY `tehdas_saldo` DESC, `tehdas_saldo_toimaika` DESC");
     $stmt->execute(array($product_num));
 
@@ -3063,7 +3077,6 @@ class MagentoClient {
 
     return false;
     }
-  }
 
   /**
    * connect pdo, return pdo object or false
@@ -3076,13 +3089,15 @@ class MagentoClient {
 
     $dsn = "mysql:dbname={$dbkanta};host={$dbhost}";
     if (self::$pdo) { // connect only once
-        return; 
+        return;
     }
-    try {
+    try {   
         self::$pdo = new PDO($dsn, $dbuser, $dbpass);
     } catch (PDOException $e) {
-       die( "Database connection failed " . $e->getMessage());           
+       die( "Database connection failed " . $e->getMessage());        
     }
   }
 
-}
+
+  }
+
