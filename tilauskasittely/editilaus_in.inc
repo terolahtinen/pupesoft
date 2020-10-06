@@ -954,6 +954,22 @@ while ($tietue = fgets($fd)) {
                 and laji       not in ('R','P')";
         $result = pupe_query($query);
 
+      $customer_found = mysql_num_rows($result);
+
+      if ($customer_found == 1) {
+        $arow = mysql_fetch_assoc($result);
+        $vastaustapa .= $arow['tilausvahvistus'];
+        $edi_ulos .= "$arow[nimi] $arow[nimitark] $arow[toim_nimi] $arow[toim_nimitark] $arow[toim_postitp]\n";
+      } elseif ($customer_found == 0 and !empty($verkkokauppa)) {
+        $tieto = 4000; //If VATid is not found from database using magento customer number(Specific number for this implementation is 4000). Assuming that all orders are from magento
+        $query = "SELECT *
+                FROM asiakas
+                WHERE yhtio    = '$kukarow[yhtio]'
+                and asiakasnro = '$tieto'
+                and asiakasnro not in ('','0')
+                and laji       not in ('R','P')";
+        $result = pupe_query($query);
+
         $arow = mysql_fetch_assoc($result);
         $vastaustapa .= $arow['tilausvahvistus'];
         $edi_ulos .= "$arow[nimi] $arow[nimitark] $arow[toim_nimi] $arow[toim_nimitark] $arow[toim_postitp]\n";
