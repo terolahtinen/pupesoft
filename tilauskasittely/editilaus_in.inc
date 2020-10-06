@@ -929,15 +929,31 @@ while ($tietue = fgets($fd)) {
     }
 
     if (($tunnus == "ONADBY_RF" or $tunnus == "OSTOTIL.OT_ASIAKASNRO") and !is_array($arow)) {
+//DEBUG
+
       $query = "SELECT *
+                FROM asiakas
+                WHERE yhtio    = '$kukarow[yhtio]'
+                and ytunnus = '$tieto'
+                and asiakasnro not in ('','0')
+                and laji       not in ('R','P')";
+      $result = pupe_query($query);
+      $customer_found = mysql_num_rows($result);
+
+      if ($customer_found == 1) {
+        $arow = mysql_fetch_assoc($result);
+        $vastaustapa .= $arow['tilausvahvistus'];
+        $edi_ulos .= "$arow[nimi] $arow[nimitark] $arow[toim_nimi] $arow[toim_nimitark] $arow[toim_postitp]\n";
+      } elseif ($customer_found == 0 and !empty($verkkokauppa)) {
+        $tieto = 4000;
+        $query = "SELECT *
                 FROM asiakas
                 WHERE yhtio    = '$kukarow[yhtio]'
                 and asiakasnro = '$tieto'
                 and asiakasnro not in ('','0')
                 and laji       not in ('R','P')";
-      $result = pupe_query($query);
+        $result = pupe_query($query);
 
-      if (mysql_num_rows($result) == 1) {
         $arow = mysql_fetch_assoc($result);
         $vastaustapa .= $arow['tilausvahvistus'];
         $edi_ulos .= "$arow[nimi] $arow[nimitark] $arow[toim_nimi] $arow[toim_nimitark] $arow[toim_postitp]\n";
@@ -3002,3 +3018,6 @@ else {
   echo $edi_ulos;
   echo "\n";
 }
+
+//DEBUG
+echo $edi_ulos;

@@ -16,7 +16,7 @@ class MagentoClient {
 
   // comma separated list of services for Magento 2 SOAP client
   // service order matters here, adding a new service might break functionality
-  const DEFAULT_SERVICES = 'catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,customerGroupRepositoryV1,catalogAttributeSetRepositoryV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1';
+  const DEFAULT_SERVICES = 'customerGroupRepositoryV1,catalogProductAttributeManagementV1,catalogProductRepositoryV1,catalogInventoryStockRegistryV1,salesOrderRepositoryV1,salesOrderManagementV1,catalogProductAttributeOptionManagementV1,catalogProductAttributeMediaGalleryManagementV1,catalogProductAttributeRepositoryV1,catalogAttributeSetRepositoryV1';
 
   // Kutsujen m��r� multicall kutsulla
   const MULTICALL_BATCH_SIZE = 100;
@@ -153,6 +153,8 @@ class MagentoClient {
   // Default kielen lis�ksi muut tuetut kauppakohtaiset kieliversiot, esim array("en" => array('4','13'), "se" => array('9'));
   private $_TuetutKieliversiot = array();
 
+  static $pdo = false;
+
   function __construct($base_url, $bearer/*, $client_options = array(), $debug = false*/) {
       global $magento_parent_root_category;
       $this->parent_id = $magento_parent_root_category;
@@ -259,26 +261,29 @@ class MagentoClient {
     $selected_category = $this->_kategoriat;
     $verkkokauppatuotteet_erikoisparametrit = $this->_verkkokauppatuotteet_erikoisparametrit;
 
+
     // Tuote countteri
     $count = 0;
     $total_count = count($dnstuote);
 
     //Categories not used in this implementation so not updated for magento 2
-    // try {
+     try {
     //   // Tarvitaan kategoriat
     //   $category_tree = $this->getCategories();
 
+
       // Haetaan storessa olevat tuotenumerot
       $skus_in_store = $this->getProductList(true);
-    // }
-    // catch (Exception $e) {
-    //   $this->_error_count++;
-    //   $this->log('magento_tuotteet', "Virhe! Tuotteiden lis�yksess� (simple)", $e);
-    //   return;
-    // }
+     }
+     catch (Exception $e) {
+       $this->_error_count++;
+       $this->log('magento_tuotteet', "Virhe! Tuotteiden lis�yksess� (simple)", $e);
+       return;
+     }
 
     // Lis�t��n tuotteet eriss�
     foreach ($dnstuote as $tuote) {
+
       $tuote_clean = $tuote['tuoteno'];
       if (is_numeric($tuote['tuoteno'])) $tuote['tuoteno'] = "SKU_".$tuote['tuoteno'];
 
@@ -299,7 +304,7 @@ class MagentoClient {
       }
 
       // Etsit��n kategoria_id tuoteryhm�ll�
-      if ($selected_category == 'tuoteryhma') {
+   /*   if ($selected_category == 'tuoteryhma') {
         $category_ids[] = $this->findCategory(utf8_encode($tuoteryhmanimi), $category_tree['children']);
       }
       else {
@@ -312,7 +317,7 @@ class MagentoClient {
             $category_ids[] = $this->createCategoryTree($tuotepolku);
           }
         }
-      }
+      } */
 
       // Jos tuote ei oo osa configurable_grouppia, niin niitten kuuluu olla visibleja.
       if (isset($individual_tuotteet[$tuote_clean])) {
@@ -420,6 +425,8 @@ class MagentoClient {
         'target'                => utf8_encode($tuote['target']),
         //'tier_price'            => $tuote_ryhmahinta_data,
         'additional_attributes' => array('multi_data' => $multi_data),
+        'alennusryhma'          => utf8_encode($tuote['alennusryhma']),
+        'vakkoodi'              => $tuote['vakkoodi'],//rahtilisät
       );
 
       $tuote_data_up = array(
@@ -445,7 +452,22 @@ class MagentoClient {
         'target'                => utf8_encode($tuote['target']),
         //'tier_price'            => $tuote_ryhmahinta_data,
         'additional_attributes' => array('multi_data' => $multi_data),
+        'alennusryhma'          => utf8_encode($tuote['alennusryhma']),
+        'vakkoodi'              => $tuote['vakkoodi'],//rahtilisät
       );
+
+      $rahtilisa_magento_value = '';
+
+      if (!empty($tuote_data['vakkoodi']) || !empty($tuote_data_up['vakkoodi'])) {
+        //same value on both arrays, using value from array $tuote_data
+        $rahtilisa_magento_value = $this->rahtilisa_attribute($tuote_data['vakkoodi']);
+      }
+
+      if (empty($tuote_data_up['special_price'])) {
+        $tuote_data_up['additional_attributes']['multi_data']['special_to_date'] = '2000-01-01 00:00:00';
+      } else {
+        $tuote_data_up['additional_attributes']['multi_data']['special_to_date'] = '';
+      }
       
       // Asetetaan tuotteen url_key mik�li parametrit m��ritelty
       if (count($this->_magento_url_key_attributes) > 0) {
@@ -464,6 +486,19 @@ class MagentoClient {
 
       //for magento 2 soap call, need to merge all custom attributes to the same array in 'attributeCode', 'value' format
       //these will be given as custom_attributes in the call
+
+
+
+
+      $supplier_saldo_values = $this->get_supplier_saldo($tuote['tuoteno']);
+      if ($supplier_saldo_values !== false) {
+        $supplier_saldo = $supplier_saldo_values['qty'];
+        $supplier_available_again = $supplier_saldo_values['available_again'];
+      } else {
+        $supplier_saldo = '-1';
+        $supplier_available_again = '0000-00-00 00:00:00';
+      }
+
 
       $custom_attributes = [
         [
@@ -493,6 +528,22 @@ class MagentoClient {
         [
           'attributeCode' => 'target',
           'value' => $tuote_data['target']
+        ],
+        [
+          'attributeCode' => 'rahtilisat',
+          'value' => $rahtilisa_magento_value
+        ],
+        [
+          'attributeCode' => 'alennusryhma',
+          'value' => $tuote_data['alennusryhma']
+        ],
+        [
+          'attributeCode' => 'supplier_saldo',
+          'value' => $supplier_saldo
+        ],
+        [
+          'attributeCode' => 'supplier_available_again',
+          'value' => $supplier_available_again
         ]
       ];
 
@@ -638,8 +689,25 @@ class MagentoClient {
             [
               'attributeCode' => 'special_price',
               'value' => $tuote_data_up['special_price']
+            ],
+            [
+              'attributeCode' => 'rahtilisat',
+              'value' => $rahtilisa_magento_value
+            ],
+            [
+              'attributeCode' => 'alennusryhma',
+              'value' => $tuote_data_up['alennusryhma']
+            ],
+            [
+              'attributeCode' => 'supplier_saldo',
+              'value' => $supplier_saldo
+            ],
+            [
+              'attributeCode' => 'supplier_available_again',
+              'value' => $supplier_available_again
             ]
           ];
+
 
           foreach($tuote_data_up['additional_attributes']['multi_data'] as $key => $value) {
             $custom_attributes_update [] = [
@@ -681,6 +749,7 @@ class MagentoClient {
           continue;
         }
       }
+
 
       // P�ivitet��n tuotteen kieliversiot kauppan�kym�kohtaisesti
       // jos n�m� on asetettu konffissa
@@ -2651,7 +2720,6 @@ class MagentoClient {
       $message .= "\nfaultcode: " . $exception->faultcode;
       $message .= "\nmessage:   " . $exception->getMessage();
     }
-
     pupesoft_log($log_name, $message);
   }
 
@@ -2955,4 +3023,85 @@ class MagentoClient {
     // );
     return $return_array;
   }
-}
+
+  //added function to get correct "Rahtilisät" value for magento 2
+  function rahtilisa_attribute($attribute_label) {
+    $labels = explode(',',$attribute_label);
+    $value = '';
+    $attribute = [
+      'attributeCode' => 'rahtilisat'
+    ];
+
+    $options_object =  $this->get_client()->catalogProductAttributeRepositoryV1Get($attribute)->result->options;
+
+    foreach($options_object->item as $option) {
+      foreach($labels as $label) {
+        if($option->label == $label) {
+          if(!empty($value)) {
+            $value .= ',';
+          }
+          $value .= $option->value;
+        }
+      }
+    }
+    return $value;
+  }
+
+  /***
+   *   Get supplier saldo AND expected availability date, if set
+   * 
+   * Returns only one supplier, the one with most in stock, or if no-one has stock, the one with soonest availablity, if no supplier saldo available, returns false
+   * 
+   * really should have mvc-model
+   * 
+   *  param $product_id
+   * 
+   */
+  function get_supplier_saldo($product_num) {
+
+    $this->connect_pdo();
+
+    $stmt = self::$pdo->prepare("SELECT * FROM `tuotteen_toimittajat` WHERE tuoteno = ? ORDER BY `tehdas_saldo` DESC, `tehdas_saldo_toimaika` DESC");
+    $stmt->execute(array($product_num));
+
+    $supplier_saldo = array();
+
+    $row = $stmt->fetch();
+    if ($row) {
+	$stmt2 = self::$pdo->prepare("SELECT * FROM `toimi` WHERE tunnus = ?");
+	$stmt2->execute(array($row['liitostunnus']));
+	$row2 = $stmt2->fetch();
+	$lead_time = $row2['oletus_toimaika'];
+       return array(
+        'supplier_code' => $row['liitostunnus'],
+        'qty' => $row['tehdas_saldo'],
+        'available_again' => date('Y-m-d 00:00:00', strtotime('+ ' . $row['tehdas_saldo_toimaika'] + $lead_time. ' days'))
+      );
+    }
+
+    return false;
+    }
+
+  /**
+   * connect pdo, return pdo object or false
+   */
+  protected function connect_pdo() {
+    global $dbhost;
+    global $dbuser;
+    global $dbpass;
+    global $dbkanta;
+
+    $dsn = "mysql:dbname={$dbkanta};host={$dbhost}";
+    if (self::$pdo) { // connect only once
+        return;
+    }
+    try {   
+        self::$pdo = new PDO($dsn, $dbuser, $dbpass);
+    } catch (PDOException $e) {
+       die( "Database connection failed " . $e->getMessage());        
+    }
+  }
+
+
+  }
+

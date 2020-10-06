@@ -340,6 +340,9 @@ function tuote_export_hae_tuotetiedot($params) {
       'tuotteen_avainsanat'  => tuote_export_hae_tuotteen_avainsanat($row['tuoteno']),
       'tuotteen_parametrit'  => $tuotteen_parametrit,
       'yksikko'              => $row["yksikko"],
+      //lisättyä (alennusryhmä ja vakkoodi), tarvitsee vielä testaamista
+      'alennusryhma'         => utf8_encode($row["aleryhma"]),
+      'vakkoodi'             => utf8_encode($row["vakkoodi"]),
     );
   }
 
