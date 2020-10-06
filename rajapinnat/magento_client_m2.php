@@ -496,7 +496,7 @@ class MagentoClient {
         $supplier_available_again = $supplier_saldo_values['available_again'];
       } else {
         $supplier_saldo = '-1';
-        $supplier_available_again = '0000-00-00 00:00:00';
+        $supplier_available_again = -1;
       }
 
 
@@ -3075,7 +3075,7 @@ class MagentoClient {
        return array(
         'supplier_code' => $row['liitostunnus'],
         'qty' => $row['tehdas_saldo'],
-        'available_again' => date('Y-m-d 00:00:00', strtotime('+ ' . $row['tehdas_saldo_toimaika'] + $lead_time. ' days'))
+        'available_again' =>  $row['tehdas_saldo_toimaika'] + $lead_time
       );
     }
 
