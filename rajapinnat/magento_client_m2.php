@@ -635,12 +635,14 @@ class MagentoClient {
 
           $result = $this->get_client()->catalogProductRepositoryV1Get($sku_for_update);
           $product_id = $result->result->id;
-          foreach($result->result->customAttributes->item as $attributes) {
-            if (strcasecmp($attributes->attributeCode, 'category_ids') == 0) {
-              $current_categories = $attributes->value; //tämän hetkiset kategoriat
-              break;
+	  if (isset($result->result->customAttributes->item)) {
+          	foreach($result->result->customAttributes->item as $attributes)  {
+            	if (strcasecmp($attributes->attributeCode, 'category_ids') == 0) {
+             	 $current_categories = $attributes->value; //tämän hetkiset kategoriat
+              	break;
             }
           }
+	}
 
           // Jos tuotteelta l�ytyy n�it� kategoriatunnuksia ennen updatea ne lis�t��n takaisin
           if (count($sticky_kategoriat) > 0 and count($current_categories) > 0) {
@@ -2720,6 +2722,10 @@ class MagentoClient {
       $message .= "\nfaultcode: " . $exception->faultcode;
       $message .= "\nmessage:   " . $exception->getMessage();
     }
+
+    if (getenv("ECHO_LOG")) { 
+	echo "\n$log_name $message";
+    } 
     pupesoft_log($log_name, $message);
   }
 
