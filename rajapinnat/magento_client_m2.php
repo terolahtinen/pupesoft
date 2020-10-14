@@ -493,10 +493,10 @@ class MagentoClient {
       $supplier_saldo_values = $this->get_supplier_saldo($tuote['tuoteno']);
       if ($supplier_saldo_values !== false) {
         $supplier_saldo = $supplier_saldo_values['qty'];
-        $supplier_available_again = $supplier_saldo_values['available_again'];
+        $supplier_lead_time = $supplier_saldo_values['supplier_lead_time'];
       } else {
         $supplier_saldo = '-1';
-        $supplier_available_again = -1;
+        $supplier_lead_time = -1;
       }
 
 
@@ -542,8 +542,8 @@ class MagentoClient {
           'value' => $supplier_saldo
         ],
         [
-          'attributeCode' => 'supplier_available_again',
-          'value' => $supplier_available_again
+          'attributeCode' => 'supplier_lead_time',
+          'value' => $supplier_lead_time
         ]
       ];
 
@@ -705,8 +705,8 @@ class MagentoClient {
               'value' => $supplier_saldo
             ],
             [
-              'attributeCode' => 'supplier_available_again',
-              'value' => $supplier_available_again
+              'attributeCode' => 'supplier_lead_time',
+              'value' => $supplier_lead_time
             ]
           ];
 
@@ -3081,7 +3081,7 @@ class MagentoClient {
        return array(
         'supplier_code' => $row['liitostunnus'],
         'qty' => $row['tehdas_saldo'],
-        'available_again' =>  $row['tehdas_saldo_toimaika'] + $lead_time
+        'supplier_lead_time' =>  $row['tehdas_saldo_toimaika'] + $lead_time
       );
     }
 
