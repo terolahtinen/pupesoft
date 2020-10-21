@@ -372,37 +372,39 @@ class MagentoClient {
         }
       }
 
-      foreach ($verkkokauppatuotteet_erikoisparametrit as $erikoisparametri) {
-        $key = $erikoisparametri['nimi'];
+      if (isset($verkkokauppatuotteet_erikoisparametrit) and is_array($verkkokauppatuotteet_erikoisparametrit)) {
+        foreach ($verkkokauppatuotteet_erikoisparametrit as $erikoisparametri) {
+          $key = $erikoisparametri['nimi'];
 
-        // Kieliversiot
-        // poimitaan talteen koska niit� k�ytet��n toisaalla
-        if ($key == 'kieliversiot') {
-          continue;
-        }
-
-        // ohitetaan kauppakohtaiset hinnat ja verokannat
-        if ($key == 'kauppakohtaiset_hinnat') {
-          continue;
-        }
-
-        if ($key == 'kauppakohtaiset_verokannat') {
-          continue;
-        }
-
-        if (isset($tuote[$erikoisparametri['arvo']])) {
-          $option_id = $this->get_option_id($key, $tuote[$erikoisparametri['arvo']], $attribute_set_id);
-
-          if ($option_id === false) {
-            $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]} #option_id == 0, j�tet��n p�ivitt�m�tt�");
+          // Kieliversiot
+          // poimitaan talteen koska niit� k�ytet��n toisaalla
+          if ($key == 'kieliversiot') {
             continue;
           }
 
-          $multi_data[$key] = $option_id;
-          $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]}");
-        }
-        else {
-          $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]} #!isset, j�tet��n p�ivitt�m�tt�");
+          // ohitetaan kauppakohtaiset hinnat ja verokannat
+          if ($key == 'kauppakohtaiset_hinnat') {
+            continue;
+          }
+
+          if ($key == 'kauppakohtaiset_verokannat') {
+            continue;
+          }
+
+          if (isset($tuote[$erikoisparametri['arvo']])) {
+            $option_id = $this->get_option_id($key, $tuote[$erikoisparametri['arvo']], $attribute_set_id);
+
+            if ($option_id === false) {
+              $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]} #option_id == 0, j�tet��n p�ivitt�m�tt�");
+              continue;
+            }
+
+            $multi_data[$key] = $option_id;
+            $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]}");
+          }
+          else {
+            $this->log('magento_tuotteet', "Erikoisparametri {$key}: {$tuote[$erikoisparametri['arvo']]} #!isset, j�tet��n p�ivitt�m�tt�");
+          }
         }
       }
 
@@ -3074,15 +3076,19 @@ class MagentoClient {
 
     $row = $stmt->fetch();
     if ($row) {
-	$stmt2 = self::$pdo->prepare("SELECT * FROM `toimi` WHERE tunnus = ?");
-	$stmt2->execute(array($row['liitostunnus']));
-	$row2 = $stmt2->fetch();
-	$lead_time = $row2['oletus_toimaika'];
-       return array(
-        'supplier_code' => $row['liitostunnus'],
-        'qty' => $row['tehdas_saldo'],
-        'supplier_lead_time' =>  $row['tehdas_saldo_toimaika'] + $lead_time
-      );
+        if ($row['tehdas_saldo_toimaika'] > 0) {
+          $stmt2 = self::$pdo->prepare("SELECT * FROM `toimi` WHERE tunnus = ?");
+          $stmt2->execute(array($row['liitostunnus']));
+          $row2 = $stmt2->fetch();
+          $lead_time = $row2['oletus_toimaika'];
+        } else {
+          $lead_time = 0;
+        }
+        return array(
+          'supplier_code' => $row['liitostunnus'],
+          'qty' => $row['tehdas_saldo'],
+          'supplier_lead_time' =>  $row['tehdas_saldo_toimaika'] + $lead_time
+        );
     }
 
     return false;
