@@ -492,7 +492,7 @@ class MagentoClient {
 
 
 
-      $supplier_saldo_values = $this->get_supplier_saldo($tuote['tuoteno']);
+      $supplier_saldo_values = $this->get_supplier_saldo($tuote_clean);
       if ($supplier_saldo_values !== false) {
         $supplier_saldo = $supplier_saldo_values['qty'];
         $supplier_lead_time = $supplier_saldo_values['supplier_lead_time'];
