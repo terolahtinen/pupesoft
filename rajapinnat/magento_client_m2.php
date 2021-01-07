@@ -743,7 +743,7 @@ class MagentoClient {
 
 
           $this->log('magento_tuotteet', "Tuotetiedot p�ivitetty");
-          $this->debug('magento_tuotteet', $tuote_data_up);
+          $this->log('magento_tuotteet', print_r($update_product_values, true));
         }
         catch (Exception $e) {
           $this->_error_count++;
