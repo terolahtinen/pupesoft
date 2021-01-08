@@ -283,6 +283,13 @@ class MagentoClient {
 
     // Lis�t��n tuotteet eriss�
     foreach ($dnstuote as $tuote) {
+      $only_product = getenv('PRODUCTID');
+      )
+      if ($only_product !== false and $only_product != $tuote['tuoteno']) {
+          echo "skipping product " . $tuote['tuoteno'] . "\n"; 
+          continue;
+        }
+      }
 
       $tuote_clean = $tuote['tuoteno'];
       if (is_numeric($tuote['tuoteno'])) $tuote['tuoteno'] = "SKU_".$tuote['tuoteno'];
@@ -2962,20 +2969,21 @@ class MagentoClient {
     $return_array = array();
 
     // Kauppakohtaiset hinnat tulee erikoisparametreist�
-    foreach ($this->_verkkokauppatuotteet_erikoisparametrit as $erikoisparametri) {
-      $key = $erikoisparametri['nimi'];
+    if (is_array($this->_verkkokauppatuotteet_erikoisparametrit )) {
+      foreach ($this->_verkkokauppatuotteet_erikoisparametrit as $erikoisparametri) {
+        $key = $erikoisparametri['nimi'];
 
-      if ($key == 'kauppakohtaiset_hinnat') {
-        $kauppakohtaiset_hinnat = $erikoisparametri['arvo'];
-        continue;
-      }
+        if ($key == 'kauppakohtaiset_hinnat') {
+          $kauppakohtaiset_hinnat = $erikoisparametri['arvo'];
+          continue;
+        }
 
-      if ($key == 'kauppakohtaiset_verokannat') {
-        $kauppakohtaiset_verokannat = $erikoisparametri['arvo'];
-        continue;
+        if ($key == 'kauppakohtaiset_verokannat') {
+          $kauppakohtaiset_verokannat = $erikoisparametri['arvo'];
+          continue;
+        }
       }
     }
-
     // Esimerkiksi:
     //
     // $kauppakohtaiset_hinnat = array(
