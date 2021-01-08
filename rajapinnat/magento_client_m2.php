@@ -284,7 +284,6 @@ class MagentoClient {
     // Lis�t��n tuotteet eriss�
     foreach ($dnstuote as $tuote) {
       $only_product = getenv('PRODUCTID');
-      )
       if ($only_product !== false and $only_product != $tuote['tuoteno']) {
           echo "skipping product " . $tuote['tuoteno'] . "\n"; 
           continue;
